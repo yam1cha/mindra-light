@@ -1,9 +1,7 @@
-name: Build
-
 name: Mindra Light
 
 on:
-  workflow_dispatch: 
+  workflow_dispatch:
     inputs:
       reason:
         description: 'Reason for triggering this workflow'

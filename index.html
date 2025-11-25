@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mindra Light</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #1e1e1e;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    #root {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ===== タイトルバー ===== */
+
+    #top-hover-zone {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 6px;
+      z-index: 100;
+    }
+
+    #window-titlebar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #d0d0d0;
+      border-bottom: 1px solid #b0b0b0;
+      padding: 0 8px;
+      box-sizing: border-box;
+      transform: translateY(-100%);
+      opacity: 0;
+      transition: transform 0.15s ease-out, opacity 0.15s ease-out;
+      cursor: default;
+      z-index: 110;
+      user-select: none;
+    }
+
+    #window-titlebar.visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .window-titlebar-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .window-titlebar-left img {
+      width: 16px;
+      height: 16px;
+    }
+
+    .window-title-text {
+      font-size: 12px;
+      color: #000;
+    }
+
+    .window-btn {
+      width: 36px;
+      height: 22px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .window-btn:hover {
+      background: #c4c4c4;
+    }
+
+    .window-btn.close:hover {
+      background: #ff6b6b;
+      color: #fff;
+    }
+
+    /* ===== 左サイドバー ===== */
+
+    #sidebar-hover-zone {
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 6px;
+      z-index: 90;
+    }
+
+    #sidebar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 240px;
+      background: #f5f5f7;
+      border-right: 1px solid #d0d0d5;
+      padding: 10px 10px 10px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transform: translateX(-100%);
+      opacity: 0;
+      transition: transform 0.15s ease-out, opacity 0.15s ease-out;
+      font-size: 13px;
+      z-index: 95;
+      user-select: none;
+    }
+
+    #sidebar.sidebar-open {
+      transform: translateX(0);
+      opacity: 1;
+    }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .sidebar-header-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sidebar-header-left img {
+      width: 18px;
+      height: 18px;
+    }
+
+    .sidebar-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #333;
+      letter-spacing: 0.03em;
+    }
+
+    .sidebar-header-right {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .sidebar-icon-btn {
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      background: #e0e0e5;
+      color: #333;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .sidebar-icon-btn:hover {
+      background: #d0d0d8;
+    }
+
+    .sidebar-section-divider {
+      height: 1px;
+      margin: 4px 0 6px;
+      background: #d3d3da;
+    }
+
+    #btn-new-tab {
+      border: none;
+      padding: 4px 4px;
+      border-radius: 6px;
+      background: transparent;
+      color: #444;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 500;
+      font-size: 13px;
+    }
+
+    #btn-new-tab:hover {
+      background: #e6e6ee;
+    }
+
+    #btn-new-tab span.plus {
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    #tab-list {
+      flex: 1;
+      margin-top: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      overflow-y: auto;
+    }
+
+    .tab-item {
+      width: 100%;
+      padding: 4px 6px;
+      border-radius: 6px;
+      background: transparent;
+      color: #333;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      box-sizing: border-box;
+      font-size: 12px;
+    }
+
+    .tab-item:hover {
+      background: #e6e6ee;
+    }
+
+    .tab-item.active {
+      background: #d8d8e8;
+      font-weight: 600;
+    }
+
+    .tab-item-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .tab-item-title {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      max-width: 150px;
+    }
+
+    .tab-close-btn {
+      background: transparent;
+      border: none;
+      color: #777;
+      font-size: 13px;
+      cursor: pointer;
+      width: 20px;
+      height: 20px;
+    }
+
+    .tab-close-btn:hover {
+      color: #e81123;
+      font-weight: 700;
+    }
+
+    .tab-profile-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      border: 1px solid rgba(0,0,0,0.25);
+      background: transparent;
+    }
+
+    /* URL入力欄（左サイドバー） */
+    .sidebar-url-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    #sidebar-url-input {
+      flex: 1;
+      padding: 4px 6px;
+      border-radius: 999px;
+      border: 1px solid #ccccd5;
+      font-size: 12px;
+      background: #ffffff;
+      box-sizing: border-box;
+    }
+
+    #sidebar-url-input:focus {
+      border-color: #4a90ff;
+      box-shadow: 0 0 0 2px rgba(74,144,255,0.3);
+      outline: none;
+    }
+
+    /* ===== 右サイドバー（AIパネル） ===== */
+
+    #right-sidebar {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 320px;
+      background: #f1f1f4;
+      color: #222;
+      border-left: 1px solid #d0d0d5;
+      box-sizing: border-box;
+      padding: 10px;
+      transform: translateX(100%);
+      opacity: 0;
+      transition: transform 0.18s ease-out, opacity 0.18s ease-out;
+      z-index: 90;
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #right-sidebar.open {
+      transform: translateX(0);
+      opacity: 1;
+    }
+
+    #right-sidebar-main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #ai-download-btn {
+      padding: 10px 18px;
+      border-radius: 999px;
+      border: none;
+      background: #6366f1;
+      color: #ffffff;
+      font-size: 13px;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.18);
+    }
+
+    #ai-input-row {
+      margin-top: 0;
+      display: flex;
+      gap: 6px;
+      padding-top: 6px;
+    }
+
+    #ai-input {
+      flex: 1;
+      padding: 4px 6px;
+      border-radius: 4px;
+      border: 1px solid #ccccd5;
+      font-size: 12px;
+      background: #eeeeee;
+      color: #999999;
+    }
+
+    #ai-send {
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: none;
+      font-size: 11px;
+      background: #bbbbbb;
+      color: #ffffff;
+    }
+
+    /* ===== 設定パネル ===== */
+
+    #settings-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.25);
+      z-index: 200;
+      display: none;
+      align-items: flex-start;
+      justify-content: flex-start;
+    }
+
+    #settings-panel {
+      margin: 40px 0 0 40px;
+      width: 260px;
+      background: #fafafa;
+      border-radius: 8px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+      padding: 10px 12px;
+      box-sizing: border-box;
+      font-size: 12px;
+      color: #333;
+    }
+
+    #settings-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    #settings-panel-title {
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    #settings-panel-close {
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    /* ===== webview ===== */
+
+    webview {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #000;
+      z-index: 10;
+    }
+
+    /* ===== プロファイル選択メニュー＋オーバーレイ ===== */
+
+    #profile-overlay {
+      position: absolute;
+      inset: 0;
+      background: transparent;
+      z-index: 280;
+      display: none;
+    }
+
+    #profile-menu {
+      position: absolute;
+      min-width: 200px;
+      background: #ffffff;
+      border-radius: 6px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+      padding: 4px 0;
+      z-index: 300;
+      display: none;
+      font-size: 13px;
+    }
+
+    .profile-menu-item {
+      padding: 6px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .profile-menu-item:hover {
+      background: #e5e5e5;
+    }
+
+    .profile-menu-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 1px solid rgba(0,0,0,0.3);
+      flex-shrink: 0;
+    }
+
+    .profile-menu-label {
+      flex: 1;
+    }
+
+    /* ===== ページ内検索バー ===== */
+
+    #find-bar {
+      position: absolute;
+      top: 32px;
+      right: 16px;
+      display: none;
+      align-items: center;
+      gap: 6px;
+      background: rgba(245,245,248,0.96);
+      padding: 4px 6px;
+      border-radius: 4px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+      z-index: 210;
+      font-size: 12px;
+    }
+
+    #find-input {
+      width: 160px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      border: 1px solid #b8b8c8;
+      font-size: 12px;
+      background: #ffffff;
+      box-sizing: border-box;
+    }
+
+    #find-count {
+      min-width: 60px;
+      text-align: right;
+      color: #555;
+    }
+
+    #find-close {
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 13px;
+      width: 20px;
+      height: 20px;
+      border-radius: 3px;
+    }
+
+    #find-close:hover {
+      background: #e0e0e5;
+    }
+  </style>
+</head>
+<body>
+<div id="root">
+  <div id="top-hover-zone"></div>
+  <div id="window-titlebar">
+    <div class="window-titlebar-left">
+      <img src="icons/mindra_icon_16.png" alt="Mindra" />
+      <span class="window-title-text">Mindra Light</span>
+    </div>
+    <div>
+      <button id="win-min" class="window-btn">−</button>
+      <button id="win-max" class="window-btn">□</button>
+      <button id="win-close" class="window-btn close">×</button>
+    </div>
+  </div>
+
+  <div id="sidebar-hover-zone"></div>
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-header-left">
+        <img src="icons/mindra_icon_16.png" alt="Mindra" />
+        <span class="sidebar-title">Mindra Light</span>
+      </div>
+      <div class="sidebar-header-right">
+        <button id="btn-open-settings" class="sidebar-icon-btn">⚙</button>
+        <button id="btn-toggle-ai" class="sidebar-icon-btn">AI</button>
+      </div>
+    </div>
+
+    <div class="sidebar-section-divider"></div>
+
+    <div class="sidebar-url-row">
+      <input id="sidebar-url-input" type="text" placeholder="URL を入力 / 検索" />
+    </div>
+
+    <button id="btn-new-tab">
+      <span class="plus">＋</span>
+      <span>New Tab</span>
+    </button>
+
+    <div id="tab-list"></div>
+  </div>
+
+  <div id="right-sidebar">
+    <div id="right-sidebar-main">
+      <button id="ai-download-btn">AIをダウンロード</button>
+    </div>
+    <div id="ai-input-row">
+      <input id="ai-input" type="text" disabled />
+      <button id="ai-send" disabled>送信</button>
+    </div>
+  </div>
+
+  <div id="settings-overlay">
+    <div id="settings-panel">
+      <div id="settings-panel-header">
+        <span id="settings-panel-title">Settings</span>
+        <button id="settings-panel-close">×</button>
+      </div>
+      <div id="settings-panel-body">
+        ここは将来、各種設定を置く場所だよ。<br />
+        今はダミーの表示だけ。
+      </div>
+    </div>
+  </div>
+
+  <!-- ページ内検索バー -->
+  <div id="find-bar">
+    <input id="find-input" type="text" placeholder="このページを検索" />
+    <span id="find-count"></span>
+    <button id="find-close">×</button>
+  </div>
+
+  <!-- webview は JS からタブごとに追加する -->
+
+  <div id="profile-overlay"></div>
+  <div id="profile-menu"></div>
+</div>
+
+<script>
+  const rootEl = document.getElementById("root");
+
+  /* --- ウインドウボタン --- */
+  document.getElementById("win-min").onclick = () =>
+    window.mindraWindow.control("minimize");
+  document.getElementById("win-max").onclick = () =>
+    window.mindraWindow.control("maximize");
+  document.getElementById("win-close").onclick = () =>
+    window.mindraWindow.control("close");
+
+  /* --- タイトルバー表示制御 & ドラッグ --- */
+  const topHoverZone = document.getElementById("top-hover-zone");
+  const titlebar = document.getElementById("window-titlebar");
+
+  let dragging = false;
+  let dragStart = { x: 0, y: 0 };
+  let winStart = { x: 0, y: 0 };
+
+  topHoverZone.addEventListener("mouseenter", () => {
+    titlebar.classList.add("visible");
+  });
+
+  titlebar.addEventListener("mouseleave", () => {
+    if (dragging) return;
+    titlebar.classList.remove("visible");
+  });
+
+  titlebar.addEventListener("mousedown", async (e) => {
+    if (e.button !== 0) return;
+    if (e.target.classList.contains("window-btn")) return;
+
+    dragging = true;
+    dragStart = { x: e.screenX, y: e.screenY };
+    const bounds = await window.mindraWindow.getBounds();
+    if (!bounds) return;
+    winStart = { x: bounds.x, y: bounds.y };
+
+    window.addEventListener("mousemove", onDragMove);
+    window.addEventListener("mouseup", onDragEnd);
+  });
+
+  function onDragMove(e) {
+    if (!dragging) return;
+    const dx = e.screenX - dragStart.x;
+    const dy = e.screenY - dragStart.y;
+    window.mindraWindow.setPosition(winStart.x + dx, winStart.y + dy);
+  }
+
+  function onDragEnd() {
+    dragging = false;
+    window.removeEventListener("mousemove", onDragMove);
+    window.removeEventListener("mouseup", onDragEnd);
+  }
+
+  /* ===== サイドバー / 設定 / AIパネル ===== */
+  const sidebar = document.getElementById("sidebar");
+  const sidebarHoverZone = document.getElementById("sidebar-hover-zone");
+  const btnNewTab = document.getElementById("btn-new-tab");
+  const tabListEl = document.getElementById("tab-list");
+
+  const btnOpenSettings = document.getElementById("btn-open-settings");
+  const btnToggleAI = document.getElementById("btn-toggle-ai");
+  const rightSidebar = document.getElementById("right-sidebar");
+  const settingsOverlay = document.getElementById("settings-overlay");
+  const settingsPanelClose = document.getElementById("settings-panel-close");
+
+  const profileOverlay = document.getElementById("profile-overlay");
+  const profileMenuEl = document.getElementById("profile-menu");
+
+  const findBar = document.getElementById("find-bar");
+  const findInput = document.getElementById("find-input");
+  const findCountEl = document.getElementById("find-count");
+  const findCloseBtn = document.getElementById("find-close");
+
+  let tabs = [];
+  let closedTabs = [];
+  let currentTabId = null;
+  let nextTabId = 1;
+
+  let activeWebviewId = null;
+  let nextWebviewId = 1;
+
+  let sidebarOpen = false;
+  let profileMenuOpen = false;
+  let rightSidebarOpen = false;
+
+  const profileColors = {
+    1: "#e57373",
+    2: "#64b5f6",
+    3: "#81c784",
+    4: "#ffb74d",
+    5: "#ba68c8",
+    6: "#4dd0e1",
+    7: "#ffd54f",
+    8: "#a1887f",
+    9: "#90caf9",
+    10: "#ffcc80",
+  };
+
+  /* ===== タブ状態 永続化(localStorage) ===== */
+  const TABS_STATE_KEY = "mindraLightTabsState";
+
+  function serializeTabsState() {
+    const currentIndex = tabs.findIndex((t) => t.id === currentTabId);
+    return {
+      tabs: tabs.map((t) => ({
+        url: t.url,
+        profileId: t.profileId || 1,
+      })),
+      currentTabIndex: currentIndex < 0 ? 0 : currentIndex,
+    };
+  }
+
+  function saveTabsState() {
+    try {
+      const state = serializeTabsState();
+      localStorage.setItem(TABS_STATE_KEY, JSON.stringify(state));
+    } catch (e) {
+      console.error("saveTabsState error", e);
+    }
+  }
+
+  function loadTabsState() {
+    try {
+      const raw = localStorage.getItem(TABS_STATE_KEY);
+      if (!raw) return false;
+      const state = JSON.parse(raw);
+      const storedTabs = state && Array.isArray(state.tabs) ? state.tabs : [];
+      if (storedTabs.length === 0) return false;
+
+      tabs = [];
+      closedTabs = [];
+      currentTabId = null;
+      nextTabId = 1;
+      nextWebviewId = 1;
+      activeWebviewId = null;
+
+      storedTabs.forEach((t) => {
+        const id = nextTabId++;
+        const url = t.url || "https://www.google.com";
+        tabs.push({
+          id,
+          url,
+          title: deriveTitleFromUrl(url),
+          profileId: t.profileId || 1,
+          webviewId: null,
+        });
+      });
+
+      const idx = Math.min(
+        Math.max(0, state.currentTabIndex || 0),
+        tabs.length - 1
+      );
+      setActiveTab(tabs[idx].id);
+      return true;
+    } catch (e) {
+      console.error("loadTabsState error", e);
+      return false;
+    }
+  }
+
+  function openSidebar() {
+    sidebarOpen = true;
+    sidebar.classList.add("sidebar-open");
+  }
+
+  function closeSidebar() {
+    if (!sidebarOpen) return;
+    if (profileMenuOpen) return;
+    sidebarOpen = false;
+    sidebar.classList.remove("sidebar-open");
+  }
+
+  sidebarHoverZone.addEventListener("mouseenter", openSidebar);
+  sidebar.addEventListener("mouseleave", closeSidebar);
+
+  /* --- 設定パネル --- */
+  btnOpenSettings.addEventListener("click", () => {
+    settingsOverlay.style.display = "flex";
+  });
+
+  settingsOverlay.addEventListener("click", (e) => {
+    if (e.target === settingsOverlay) {
+      settingsOverlay.style.display = "none";
+    }
+  });
+
+  settingsPanelClose.addEventListener("click", () => {
+    settingsOverlay.style.display = "none";
+  });
+
+  /* --- 右サイドバー（AI） --- */
+  function setRightSidebar(open) {
+    rightSidebarOpen = open;
+    if (open) {
+      rightSidebar.classList.add("open");
+      btnToggleAI.style.background = "#6366f1";
+      btnToggleAI.style.color = "#fff";
+    } else {
+      rightSidebar.classList.remove("open");
+      btnToggleAI.style.background = "#e0e0e5";
+      btnToggleAI.style.color = "#333";
+    }
+  }
+
+  setRightSidebar(false);
+
+  btnToggleAI.addEventListener("click", () => {
+    setRightSidebar(!rightSidebarOpen);
+  });
+
+  /* ===== URL / タブ共通 ===== */
+  function deriveTitleFromUrl(url) {
+    try {
+      return new URL(url).hostname.replace(/^www\./, "");
+    } catch {
+      return "(New Tab)";
+    }
+  }
+
+  function resolveUrlOrSearch(raw) {
+    const text = (raw || "").trim();
+    if (!text) return null;
+
+    if (/^https?:\/\//i.test(text)) return text;
+    if (text.includes(" ") || !text.includes(".")) {
+      const q = encodeURIComponent(text);
+      return "https://www.google.com/search?q=" + q;
+    }
+    return "https://" + text;
+  }
+
+  function getActiveTab() {
+    return tabs.find((t) => t.id === currentTabId) || null;
+  }
+
+  function getActiveWebview() {
+    const tab = getActiveTab();
+    if (!tab || !tab.webviewId) return null;
+    return document.getElementById(tab.webviewId) || null;
+  }
+
+  function syncSidebarUrlInput() {
+    const input = document.getElementById("sidebar-url-input");
+    if (!input) return;
+    const tab = getActiveTab();
+    input.value = tab && tab.url ? tab.url : "";
+  }
+
+  function renderTabs() {
+    tabListEl.innerHTML = "";
+    tabs.forEach((tab) => {
+      const item = document.createElement("div");
+      item.className = "tab-item" + (tab.id === currentTabId ? " active" : "");
+      item.dataset.tabId = String(tab.id);
+
+      const left = document.createElement("div");
+      left.className = "tab-item-left";
+
+      const dot = document.createElement("span");
+      dot.className = "tab-profile-dot";
+      const pid = tab.profileId && profileColors[tab.profileId] ? tab.profileId : 1;
+      dot.style.backgroundColor = profileColors[pid];
+
+      const titleSpan = document.createElement("span");
+      titleSpan.className = "tab-item-title";
+      titleSpan.textContent = tab.title;
+
+      left.appendChild(dot);
+      left.appendChild(titleSpan);
+
+      const closeBtn = document.createElement("button");
+      closeBtn.className = "tab-close-btn";
+      closeBtn.textContent = "✕";
+      closeBtn.onclick = (e) => {
+        e.stopPropagation();
+        closeTab(tab.id);
+      };
+
+      item.appendChild(left);
+      item.appendChild(closeBtn);
+
+      item.onclick = () => switchTab(tab.id);
+
+      item.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        openSidebar();
+        openProfileMenu(tab.id, e.clientX, e.clientY);
+      });
+
+      tabListEl.appendChild(item);
+    });
+  }
+
+  /* ===== webview 作成／切り替え ===== */
+  function attachWebviewEvents(wv, tabId) {
+    if (!wv) return;
+    wv.addEventListener("did-navigate", (e) => {
+      const tab = tabs.find((t) => t.id === tabId);
+      if (!tab) return;
+      tab.url = e.url;
+      tab.title = deriveTitleFromUrl(e.url);
+      if (tab.id === currentTabId) syncSidebarUrlInput();
+      renderTabs();
+      saveTabsState();
+    });
+    wv.addEventListener("did-navigate-in-page", (e) => {
+      const tab = tabs.find((t) => t.id === tabId);
+      if (!tab) return;
+      tab.url = e.url;
+      tab.title = deriveTitleFromUrl(e.url);
+      if (tab.id === currentTabId) syncSidebarUrlInput();
+      renderTabs();
+      saveTabsState();
+    });
+    wv.addEventListener("found-in-page", (e) => {
+      updateFindCount(e.result);
+    });
+  }
+
+  function createWebviewForTab(tab) {
+    const wv = document.createElement("webview");
+    const wid = "wv-" + (nextWebviewId++);
+    wv.id = wid;
+
+    const profileId = tab.profileId || 1;
+    wv.setAttribute("partition", "persist:profile-" + profileId);
+    wv.setAttribute("allowpopups", "");
+    wv.src = tab.url || "https://www.google.com";
+
+    // 非アクティブ状態で生成
+    wv.style.visibility = "hidden";
+    wv.style.opacity = "0";
+    wv.style.pointerEvents = "none";
+
+    attachWebviewEvents(wv, tab.id);
+    rootEl.appendChild(wv);
+
+    tab.webviewId = wid;
+    return wv;
+  }
+
+  function getWebviewForTab(tab) {
+    if (!tab) return null;
+    if (tab.webviewId) {
+      const existed = document.getElementById(tab.webviewId);
+      if (existed) return existed;
+    }
+    return createWebviewForTab(tab);
+  }
+
+  function setActiveTab(id) {
+    const tab = tabs.find((t) => t.id === id);
+    if (!tab) return;
+
+    const newWv = getWebviewForTab(tab);
+    if (!newWv) return;
+
+    document.querySelectorAll("webview").forEach((wv) => {
+      wv.style.visibility = "hidden";
+      wv.style.opacity = "0";
+      wv.style.pointerEvents = "none";
+    });
+
+    newWv.style.visibility = "visible";
+    newWv.style.opacity = "1";
+    newWv.style.pointerEvents = "auto";
+
+    activeWebviewId = newWv.id;
+    currentTabId = id;
+    syncSidebarUrlInput();
+    renderTabs();
+    saveTabsState();
+  }
+
+  /* ===== タブ操作 ===== */
+  function createTab(url = "https://www.google.com", activate = true) {
+    const id = nextTabId++;
+    const tab = {
+      id,
+      url,
+      title: deriveTitleFromUrl(url),
+      profileId: 1,
+      webviewId: null,
+    };
+    tabs.push(tab);
+    if (activate) {
+      setActiveTab(id);
+    } else {
+      renderTabs();
+      saveTabsState();
+    }
+  }
+
+  function switchTab(id) {
+    setActiveTab(id);
+  }
+
+  function closeTab(id) {
+    const index = tabs.findIndex((t) => t.id === id);
+    if (index === -1) return;
+    const tab = tabs[index];
+    const wasActive = tab.id === currentTabId;
+
+    if (tab.webviewId) {
+      const wv = document.getElementById(tab.webviewId);
+      if (wv) wv.remove();
+      if (activeWebviewId === tab.webviewId) activeWebviewId = null;
+    }
+
+    closedTabs.push({ url: tab.url, title: tab.title, profileId: tab.profileId });
+    tabs.splice(index, 1);
+
+    if (tabs.length === 0) {
+      createTab("https://www.google.com", true);
+      return;
+    }
+
+    if (wasActive) {
+      const newIndex = Math.max(0, index - 1);
+      setActiveTab(tabs[newIndex].id);
+    } else {
+      renderTabs();
+      saveTabsState();
+    }
+  }
+
+  function restoreClosedTab() {
+    const last = closedTabs.pop();
+    if (!last) return;
+    const id = nextTabId++;
+    const tab = {
+      id,
+      url: last.url,
+      title: last.title,
+      profileId: last.profileId || 1,
+      webviewId: null,
+    };
+    tabs.push(tab);
+    setActiveTab(id);
+    saveTabsState();
+  }
+
+  btnNewTab.onclick = () => {
+    createTab("https://www.google.com", true);
+  };
+
+  const sidebarUrlInput = document.getElementById("sidebar-url-input");
+  sidebarUrlInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      const resolved = resolveUrlOrSearch(sidebarUrlInput.value);
+      if (!resolved) return;
+      const tab = getActiveTab();
+      if (tab) {
+        tab.url = resolved;
+        tab.title = deriveTitleFromUrl(resolved);
+        const wv = getWebviewForTab(tab);
+        if (wv) wv.src = resolved;
+        renderTabs();
+        syncSidebarUrlInput();
+        saveTabsState();
+      } else {
+        createTab(resolved, true);
+      }
+    }
+  });
+
+  /* ===== ページ内検索 ===== */
+  let findQuery = "";
+  let findActive = false;
+
+  function openFindBar(initialText) {
+    findBar.style.display = "flex";
+    findActive = true;
+    if (typeof initialText === "string") {
+      findInput.value = initialText;
+    }
+    findInput.focus();
+    findInput.select();
+    findCountEl.textContent = "";
+  }
+
+  function closeFindBar() {
+    findActive = false;
+    findBar.style.display = "none";
+    findInput.value = "";
+    findCountEl.textContent = "";
+    const wv = getActiveWebview();
+    if (wv && wv.stopFindInPage) {
+      try {
+        wv.stopFindInPage("clearSelection");
+      } catch {}
+    }
+  }
+
+  function updateFindCount(result) {
+    if (!result || !findActive) return;
+    if (!result.finalUpdate) return;
+
+    if (typeof result.matches === "number" && result.matches > 0) {
+      const current = result.activeMatchOrdinal || 1;
+      findCountEl.textContent = current + " / " + result.matches;
+    } else {
+      findCountEl.textContent = "0 / 0";
+    }
+  }
+
+  function startFind() {
+    const wv = getActiveWebview();
+    if (!wv || !wv.findInPage) return;
+
+    if (!findActive) {
+      openFindBar(findQuery);
+    }
+
+    const text = findInput.value.trim();
+    if (!text) return;
+
+    findQuery = text;
+    try {
+      wv.findInPage(findQuery);
+    } catch (e) {
+      console.error("findInPage error", e);
+    }
+  }
+
+  function findNext(forward = true) {
+    const wv = getActiveWebview();
+    if (!wv || !wv.findInPage) return;
+
+    if (!findActive) {
+      openFindBar(findQuery);
+    }
+    const text = findInput.value.trim();
+    if (!text) return;
+
+    findQuery = text;
+    try {
+      wv.findInPage(findQuery, { forward, findNext: true });
+    } catch (e) {
+      console.error("findInPage error", e);
+    }
+  }
+
+  findInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (e.shiftKey) {
+        findNext(false);
+      } else {
+        findNext(true);
+      }
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      closeFindBar();
+    }
+  });
+
+  findCloseBtn.addEventListener("click", () => {
+    closeFindBar();
+  });
+
+  /* ===== ズーム・ナビなど ===== */
+  let zoomFactor = 1.0;
+
+  function setZoom(factor) {
+    zoomFactor = Math.max(0.25, Math.min(3.0, factor));
+    const wv = getActiveWebview();
+    if (wv && wv.setZoomFactor) {
+      wv.setZoomFactor(zoomFactor);
+    }
+  }
+
+  function goBack() {
+    const wv = getActiveWebview();
+    try {
+      if (wv && wv.canGoBack && wv.canGoBack()) {
+        wv.goBack();
+      }
+    } catch {}
+  }
+
+  function goForward() {
+    const wv = getActiveWebview();
+    try {
+      if (wv && wv.canGoForward && wv.canGoForward()) {
+        wv.goForward();
+      }
+    } catch {}
+  }
+
+  function reload(normal = true) {
+    const wv = getActiveWebview();
+    if (!wv) return;
+    if (!normal && wv.reloadIgnoringCache) {
+      wv.reloadIgnoringCache();
+    } else {
+      wv.reload();
+    }
+  }
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen &&
+        document.documentElement.requestFullscreen();
+    } else {
+      document.exitFullscreen && document.exitFullscreen();
+    }
+  }
+
+  function openDevTools() {
+    const wv = getActiveWebview();
+    if (wv && wv.openDevTools) {
+      wv.openDevTools();
+    }
+  }
+
+  /* ===== プロファイル選択メニュー ===== */
+  let profileMenuTargetTabId = null;
+
+  function buildProfileMenu() {
+    profileMenuEl.innerHTML = "";
+    for (let i = 1; i <= 10; i++) {
+      const item = document.createElement("div");
+      item.className = "profile-menu-item";
+
+      const dot = document.createElement("span");
+      dot.className = "profile-menu-dot";
+      if (profileColors[i]) {
+        dot.style.backgroundColor = profileColors[i];
+      }
+
+      const label = document.createElement("span");
+      label.className = "profile-menu-label";
+      label.textContent = `プロファイル${i}`;
+
+      item.appendChild(dot);
+      item.appendChild(label);
+
+      item.onclick = () => {
+        applyProfileToTab(profileMenuTargetTabId, i);
+        hideProfileMenu();
+      };
+
+      profileMenuEl.appendChild(item);
+    }
+  }
+
+  function openProfileMenu(tabId, x, y) {
+    profileMenuTargetTabId = tabId;
+    profileMenuOpen = true;
+    buildProfileMenu();
+
+    profileOverlay.style.display = "block";
+
+    const rect = sidebar.getBoundingClientRect();
+    const menuX = Math.max(rect.right + 4, x);
+    const menuY = y;
+
+    profileMenuEl.style.left = menuX + "px";
+    profileMenuEl.style.top = menuY + "px";
+    profileMenuEl.style.display = "block";
+  }
+
+  function hideProfileMenu() {
+    profileMenuEl.style.display = "none";
+    profileOverlay.style.display = "none";
+    profileMenuOpen = false;
+  }
+
+  function applyProfileToTab(tabId, profileId) {
+    const tab = tabs.find((t) => t.id === tabId);
+    if (!tab) return;
+    if (tab.profileId === profileId) return;
+
+    tab.profileId = profileId;
+
+    if (tab.webviewId) {
+      const old = document.getElementById(tab.webviewId);
+      if (old) old.remove();
+      if (activeWebviewId === tab.webviewId) activeWebviewId = null;
+      tab.webviewId = null;
+    }
+
+    if (tab.id === currentTabId) {
+      setActiveTab(tab.id);
+    } else {
+      renderTabs();
+      saveTabsState();
+    }
+  }
+
+  profileOverlay.addEventListener("click", () => {
+    hideProfileMenu();
+    closeSidebar();
+  });
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && profileMenuOpen) {
+      hideProfileMenu();
+    }
+  });
+
+  /* ===== main.js からのショートカット ===== */
+  if (window.mindraShortcuts && window.mindraShortcuts.onShortcut) {
+    window.mindraShortcuts.onShortcut((payload) => {
+      const { type, index, url } = payload || {};
+      switch (type) {
+        case "new-tab":
+          createTab("https://www.google.com", true);
+          break;
+        case "new-tab-with-url":
+          if (url) createTab(url, true);
+          break;
+        case "close-tab":
+          if (currentTabId != null) closeTab(currentTabId);
+          break;
+        case "restore-tab":
+          restoreClosedTab();
+          break;
+        case "close-window":
+          window.mindraWindow.control("close");
+          break;
+        case "next-tab":
+          if (tabs.length > 0) {
+            const idx = tabs.findIndex((t) => t.id === currentTabId);
+            const nextIdx = (idx + 1) % tabs.length;
+            switchTab(tabs[nextIdx].id);
+          }
+          break;
+        case "prev-tab":
+          if (tabs.length > 0) {
+            const idx = tabs.findIndex((t) => t.id === currentTabId);
+            const prevIdx = (idx - 1 + tabs.length) % tabs.length;
+            switchTab(tabs[prevIdx].id);
+          }
+          break;
+        case "tab-index": {
+          const i = (index || 1) - 1;
+          if (tabs[i]) switchTab(tabs[i].id);
+          break;
+        }
+        case "tab-last":
+          if (tabs.length > 0) switchTab(tabs[tabs.length - 1].id);
+          break;
+        case "nav-back":
+          goBack();
+          break;
+        case "nav-forward":
+          goForward();
+          break;
+        case "reload":
+          reload(true);
+          break;
+        case "reload-hard":
+          reload(false);
+          break;
+        case "find":
+          openFindBar(findQuery);
+          startFind();
+          break;
+        case "find-next":
+          findNext(true);
+          break;
+        case "find-prev":
+          findNext(false);
+          break;
+        case "zoom-in":
+          setZoom(zoomFactor + 0.1);
+          break;
+        case "zoom-out":
+          setZoom(zoomFactor - 0.1);
+          break;
+        case "zoom-reset":
+          setZoom(1.0);
+          break;
+        case "fullscreen":
+          toggleFullscreen();
+          break;
+        case "devtools":
+          openDevTools();
+          break;
+      }
+    });
+  }
+
+  /* 起動時のタブ（前回状態を復元できなかったときだけ新規タブ） */
+  if (!loadTabsState()) {
+    createTab("https://www.google.com", true);
+  }
+</script>
+</body>
+</html>

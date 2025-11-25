@@ -1,0 +1,27 @@
+{
+  "name": "mindra-light",
+  "version": "0.1.0",
+  "main": "main.js",
+  "description": "Simple Electron webview browser for Mindra Light",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  },
+  "build": {
+    "appId": "com.mindra.light",
+    "win": {
+      "icon": "icons/icon.ico"
+    },
+    "mac": {
+      "icon": "icons/mindra.icns"
+    },
+    "linux": {
+      "icon": "icons"
+    }
+  },
+  "dependencies": {
+    "adblock-rs": "^0.9.5"
+  }
+}

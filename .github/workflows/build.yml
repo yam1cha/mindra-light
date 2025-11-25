@@ -1,0 +1,49 @@
+name: Build
+
+name: Mindra Light
+
+on:
+  workflow_dispatch: 
+    inputs:
+      reason:
+        description: 'Reason for triggering this workflow'
+        required: false
+        default: 'manual'
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      # adblock-rs の .node（ネイティブライブラリ）を OS ごとにビルド
+      - name: Rebuild native modules for Electron
+        run: |
+          npx electron-rebuild
+
+      - name: Build (Electron-builder)
+        run: |
+          npx electron-builder --publish never
+
+      # 成果物アップロード（Artifacts）
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mindra-light-${{ matrix.os }}
+          path: dist/
+

@@ -1,0 +1,7 @@
+! EasyList placeholder for Mindra Light
+! 実際の EasyList をここに貼り付けるか、ファイルを置き換えて使ってね。
+! 例として適当にいくつかのダミールールを書いておく（本家とは無関係）。
+
+||example-ads.com^
+||ads.example.net^
+||tracking.example.org^

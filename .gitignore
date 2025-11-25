@@ -1,0 +1,31 @@
+# Node / Electron
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist/
+out/
+release/
+*.asar
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Adblock Filters (EasyList / EasyPrivacy)
+# ライセンスの都合で GitHub に含めない
+filters/easylist.txt
+filters/easyprivacy.txt
+
+# adblock-rs バイナリ
+# OSごとに生成される .node はリポジトリに含めない
+*.node
+
+# Electron builder cache
+build/

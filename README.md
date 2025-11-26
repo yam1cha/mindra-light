@@ -1,12 +1,10 @@
 # Mindra Light Browser
 
-カスタム Electron ベースの軽量ブラウザ。
+カスタム Electron ベースの軽量ブラウザ。 V0.2.0
 
 ## 機能
 
--   Brave の広告ブロックエンジン（adblock-rs）
--   YouTube 専用広告除去パッチ（JavaScript）
--   ニコニコ / Yahoo 向け DOM/CSS 広告除去
+-   広告ブロック無しの最軽量バージョン
 -   プロファイル切り替え（partition: persist:profile-x）
 -   タブ・URLバー・検索（Ctrl+F）
 -   ショートカット多数
@@ -41,25 +39,9 @@
      ├─ preload.js
      ├─ index.html
      ├─ package.json
-     ├─ filters/
-     │   ├─ easylist.txt        ← GitHub には含めない（.gitignore）
-     │   ├─ easyprivacy.txt     ← GitHub には含めない（.gitignore）
-     │   └─ custom-*.txt        ← 自作フィルタは自由
      ├─ .github/workflows/build.yml
      ├─ .gitignore
      └─ README.md
-
-------------------------------------------------------------------------
-
-## EasyList / EasyPrivacy について
-
-ライセンスが GPL のため、\
-**GitHub へ同梱することは禁止**です。
-
-以下からダウンロードして `filters/` に置いてください：
-
--   https://easylist.to/easylist/easylist.txt\
--   https://easylist.to/easylist/easyprivacy.txt
 
 ------------------------------------------------------------------------
 
@@ -78,4 +60,3 @@
 ## ライセンス
 
 -   本体：MIT\
--   EasyList/EasyPrivacy：GPL（※同梱禁止）

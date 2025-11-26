@@ -1,6 +1,6 @@
 {
   "name": "mindra-light",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "main": "main.js",
   "description": "Simple Electron webview browser for Mindra Light",
   "scripts": {
@@ -20,8 +20,5 @@
     "linux": {
       "icon": "icons"
     }
-  },
-  "dependencies": {
-    "adblock-rs": "^0.9.5"
   }
 }

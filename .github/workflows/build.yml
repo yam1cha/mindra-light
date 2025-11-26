@@ -1,4 +1,4 @@
-name: Mindra Light
+name: build
 
 on:
   workflow_dispatch:
@@ -29,11 +29,6 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # adblock-rs の .node（ネイティブライブラリ）を OS ごとにビルド
-      - name: Rebuild native modules for Electron
-        run: |
-          npx electron-rebuild
-
       - name: Build (Electron-builder)
         run: |
           npx electron-builder --publish never
@@ -44,4 +39,3 @@ jobs:
         with:
           name: mindra-light-${{ matrix.os }}
           path: dist/
-

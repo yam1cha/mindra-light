@@ -1,8 +1,6 @@
-const { app, BrowserWindow, ipcMain, session } = require("electron");
+const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const fs = require("fs").promises;
-const fsSync = require("fs");
-const AdBlockClient = require("adblock-rs");
 
 let mainWindow = null;
 
@@ -45,147 +43,7 @@ async function saveWindowState() {
 }
 
 /* ===========================================================
-   adblock-rs + EasyList / EasyPrivacy ベースの広告ブロック
-   （YouTube 本体は allowlist で守る）
-   =========================================================== */
-
-let adblockEngineReady = false;
-let adblockClient = null;
-
-/**
- * EasyList / EasyPrivacy のフィルタを読み込んで adblock-rs の Engine を初期化。
- */
-async function initAdblockEngine() {
-  try {
-    const filterDir = path.join(__dirname, "filters");
-    const easyListPath = path.join(filterDir, "easylist.txt");
-    const easyPrivacyPath = path.join(filterDir, "easyprivacy.txt");
-
-    const easyListRaw = fsSync.readFileSync(easyListPath, { encoding: "utf-8" });
-    const easyPrivacyRaw = fsSync.readFileSync(easyPrivacyPath, {
-      encoding: "utf-8",
-    });
-
-    const easyListRules = easyListRaw.split(/\r?\n/);
-    const easyPrivacyRules = easyPrivacyRaw.split(/\r?\n/);
-    const rules = easyListRules.concat(easyPrivacyRules);
-
-    const filterSet = new AdBlockClient.FilterSet(true);
-    filterSet.addFilters(rules);
-
-    // ひとまず uBlock の scriptlet / redirect などは使わず、ネットワークブロックだけに絞る
-    adblockClient = new AdBlockClient.Engine(filterSet, true);
-
-    adblockEngineReady = true;
-    console.log(
-      "[adblock] Engine initialized (EasyList + EasyPrivacy, rules:",
-      rules.length,
-      ")"
-    );
-  } catch (error) {
-    console.error("[adblock] initAdblockEngine failed:", error);
-    adblockEngineReady = false;
-    adblockClient = null;
-  }
-}
-
-/**
- * adblock-rs を使って URL をブロックするか判定。
- * うまく初期化できていない場合は false（ブロックしない）。
- */
-function shouldBlockUrlWithEngine(urlString, resourceType, referrer) {
-  if (!adblockEngineReady || !adblockClient) return false;
-
-  let u;
-  try {
-    u = new URL(urlString);
-  } catch {
-    return false;
-  }
-  const host = u.hostname.toLowerCase();
-
-  // ▼ 完全に許可するホスト（YouTube を絶対壊さない）
-  const allowDomains = [
-    "youtube.com",
-    "www.youtube.com",
-    "m.youtube.com",
-    "youtu.be",
-    "ytimg.com",
-    "i.ytimg.com",
-    "googlevideo.com",
-  ];
-
-  if (
-    allowDomains.some(
-      (d) => host === d || host.endsWith("." + d.replace(/^\./, ""))
-    )
-  ) {
-    return false;
-  }
-
-  try {
-    const result = adblockClient.check(
-      urlString,
-      referrer || "",
-      resourceType || "other"
-    );
-    return !!(result && result.matched);
-  } catch (e) {
-    console.error("[adblock] check failed:", e);
-    return false;
-  }
-}
-
-/**
- * 指定セッション(ses)に対して webRequest フックを仕込む
- */
-function applyAdblockToSession(ses) {
-  if (!ses) return;
-
-  try {
-    ses.webRequest.onBeforeRequest(
-      { urls: ["*://*/*"] },
-      (details, callback) => {
-        const { url, resourceType, referrer } = details;
-
-        if (shouldBlockUrlWithEngine(url, resourceType, referrer)) {
-          return callback({ cancel: true });
-        }
-        return callback({});
-      }
-    );
-  } catch (e) {
-    console.error("applyAdblockToSession error:", e);
-  }
-}
-
-// 広告ブロッカー全体のセットアップ
-async function setupAdBlocker() {
-  try {
-    await initAdblockEngine();
-
-    const sessions = new Set();
-
-    if (session.defaultSession) {
-      sessions.add(session.defaultSession);
-    }
-
-    // プロファイル用セッション（persist:profile-1〜10）
-    for (let i = 1; i <= 10; i++) {
-      const ses = session.fromPartition(`persist:profile-${i}`);
-      if (ses) sessions.add(ses);
-    }
-
-    for (const ses of sessions) {
-      applyAdblockToSession(ses);
-    }
-  } catch (error) {
-    console.error("setupAdBlocker error:", error);
-  }
-}
-
-/* ===========================================================
-   ここから下は既存のブラウザ機能（ショートカット・ウインドウ等）
+   ショートカット・ウインドウ制御などブラウザ本体
    =========================================================== */
 
 function sendShortcutToRenderer(payload) {
@@ -313,8 +171,8 @@ async function createWindow() {
     height: winState.height || 800,
     x,
     y,
-    minWidth: 900,
-    minHeight: 600,
+    minWidth: 400,
+    minHeight: 200,
     frame: false,
     backgroundColor: "#1e1e1e",
     icon: path.join(__dirname, "icons", "icon.ico"),
@@ -404,7 +262,6 @@ ipcMain.handle("window-set-position", (event, payload) => {
 });
 
 app.whenReady().then(async () => {
-  await setupAdBlocker();
   await createWindow();
 
   app.on("activate", async () => {

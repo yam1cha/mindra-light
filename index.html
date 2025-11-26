@@ -519,6 +519,83 @@
     #find-close:hover {
       background: #e0e0e5;
     }
+
+    /* ===== スプリットビュー ===== */
+
+    .tab-split-btn {
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      padding: 0 4px;
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.7;
+    }
+
+    .tab-split-btn.active {
+      opacity: 1;
+    }
+
+    .tab-split-btn:hover {
+      opacity: 1;
+    }
+
+    /* タブ用スプリットアイコン（モダンな2ペインっぽい見た目） */
+    .tab-split-icon {
+      position: relative;
+      width: 14px;
+      height: 10px;
+      border-radius: 2px;
+      border: 1px solid #b0b0b8;
+      box-sizing: border-box;
+    }
+
+    .tab-split-icon::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 1px;
+      bottom: 1px;
+      width: 1px;
+      transform: translateX(-50%);
+      background: #b0b0b8;
+    }
+
+    /* ルート内の縦スプリット用ドラッグバー */
+    #split-divider {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      border-left: 1px solid rgba(255, 255, 255, 0.2);
+      border-right: 1px solid rgba(0, 0, 0, 0.5);
+      z-index: 15; /* webviewより前、オーバーレイよりは後ろ想定 */
+      cursor: col-resize;
+      display: none;
+    }
+    /* ===== スクロールバー（アプリ本体用） ===== */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(120, 120, 120, 0.45);
+      border-radius: 999px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(120, 120, 120, 0.8);
+    }
+
   </style>
 </head>
 <body>
@@ -599,62 +676,102 @@
   <div id="profile-menu"></div>
 </div>
 
+<!-- スプリット配置オーバーレイ（2分割＋3分割用） -->
+<div id="split-overlay" style="
+  position:absolute; inset:0;
+  background:rgba(0,0,0,0.28);
+  z-index:300; display:none;
+">
+  <!-- 左右2分割 -->
+  <div class="split-slot" data-slot="left" style="
+    position:absolute; left:0; top:0;
+    width:50%; height:100%;
+    border:2px dashed rgba(255,255,255,0.85);
+    border-radius:8px;
+    cursor:pointer;">
+  </div>
+  <div class="split-slot" data-slot="right" style="
+    position:absolute; left:50%; top:0;
+    width:50%; height:100%;
+    border:2px dashed rgba(255,255,255,0.85);
+    border-radius:8px;
+    cursor:pointer;">
+  </div>
+
+  <!-- 3分割: 上 / 左下 / 右下 -->
+  <div class="split-slot" data-slot="top" style="
+    position:absolute; left:0; top:0;
+    width:100%; height:40%;
+    border:2px dashed rgba(255,255,255,0.85);
+    border-radius:8px;
+    cursor:pointer;">
+  </div>
+  <div class="split-slot" data-slot="bottom-left" style="
+    position:absolute; left:0; top:40%;
+    width:50%; height:60%;
+    border:2px dashed rgba(255,255,255,0.85);
+    border-radius:8px;
+    cursor:pointer;">
+  </div>
+  <div class="split-slot" data-slot="bottom-right" style="
+    position:absolute; left:50%; top:40%;
+    width:50%; height:60%;
+    border:2px dashed rgba(255,255,255,0.85);
+    border-radius:8px;
+    cursor:pointer;">
+  </div>
+</div>
+
 <script>
+  const CONFIG = window.config || {};
   const rootEl = document.getElementById("root");
 
-  /* --- ウインドウボタン --- */
-  document.getElementById("win-min").onclick = () =>
-    window.mindraWindow.control("minimize");
-  document.getElementById("win-max").onclick = () =>
-    window.mindraWindow.control("maximize");
-  document.getElementById("win-close").onclick = () =>
-    window.mindraWindow.control("close");
+  // スプリット用ドラッグバー作成
+  function setupSplitDivider() {
+    if (splitDividerEl) return;
+    splitDividerEl = document.createElement("div");
+    splitDividerEl.id = "split-divider";
+    rootEl.appendChild(splitDividerEl);
 
-  /* --- タイトルバー表示制御 & ドラッグ --- */
-  const topHoverZone = document.getElementById("top-hover-zone");
-  const titlebar = document.getElementById("window-titlebar");
+    splitDividerEl.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      splitDragging = true;
+      document.body.style.cursor = "col-resize";
+    });
 
-  let dragging = false;
-  let dragStart = { x: 0, y: 0 };
-  let winStart = { x: 0, y: 0 };
+    window.addEventListener("mousemove", (e) => {
+      if (!splitDragging || !splitState.enabled) return;
+      const rect = rootEl.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      if (x <= 0 || x >= rect.width) return;
+      let r = x / rect.width;
+      if (r < SPLIT_MIN_RATIO) r = SPLIT_MIN_RATIO;
+      if (r > SPLIT_MAX_RATIO) r = SPLIT_MAX_RATIO;
+      splitState.ratio = r;
+      applyCurrentLayout();
+    });
 
-  topHoverZone.addEventListener("mouseenter", () => {
-    titlebar.classList.add("visible");
-  });
-
-  titlebar.addEventListener("mouseleave", () => {
-    if (dragging) return;
-    titlebar.classList.remove("visible");
-  });
-
-  titlebar.addEventListener("mousedown", async (e) => {
-    if (e.button !== 0) return;
-    if (e.target.classList.contains("window-btn")) return;
-
-    dragging = true;
-    dragStart = { x: e.screenX, y: e.screenY };
-    const bounds = await window.mindraWindow.getBounds();
-    if (!bounds) return;
-    winStart = { x: bounds.x, y: bounds.y };
-
-    window.addEventListener("mousemove", onDragMove);
-    window.addEventListener("mouseup", onDragEnd);
-  });
-
-  function onDragMove(e) {
-    if (!dragging) return;
-    const dx = e.screenX - dragStart.x;
-    const dy = e.screenY - dragStart.y;
-    window.mindraWindow.setPosition(winStart.x + dx, winStart.y + dy);
   }
 
-  function onDragEnd() {
-    dragging = false;
-    window.removeEventListener("mousemove", onDragMove);
-    window.removeEventListener("mouseup", onDragEnd);
+  const splitOverlay = document.getElementById("split-overlay");
+
+  // ★ オーバーレイ ON/OFF と webview 表示制御
+  function setSplitOverlayActive(active) {
+    if (splitOverlay) {
+      splitOverlay.style.display = active ? "block" : "none";
+    }
+    // webview のクリック＆描画を完全に止めるため、display を切り替える
+    document.querySelectorAll("webview").forEach((wv) => {
+      if (active) {
+        wv.dataset._prevDisplay = wv.style.display || "";
+        wv.style.display = "none";
+      } else {
+        wv.style.display = wv.dataset._prevDisplay || "";
+      }
+    });
   }
 
-  /* ===== サイドバー / 設定 / AIパネル ===== */
+  /* ===== グローバル状態 ===== */
   const sidebar = document.getElementById("sidebar");
   const sidebarHoverZone = document.getElementById("sidebar-hover-zone");
   const btnNewTab = document.getElementById("btn-new-tab");
@@ -686,6 +803,37 @@
   let profileMenuOpen = false;
   let rightSidebarOpen = false;
 
+  // スプリットビュー状態（2分割）
+  const SPLIT_MIN_RATIO = 0.15;
+  const SPLIT_MAX_RATIO = 0.85;
+  const SPLIT_DIVIDER_WIDTH = 4;
+
+  const splitState = {
+    enabled: false,
+    primaryTabId: null,
+    secondaryTabId: null,
+    ratio: 0.5,
+  };
+
+  // 3分割ビュー状態
+  const split3State = {
+    enabled: false,
+    topTabId: null,
+    bottomLeftTabId: null,
+    bottomRightTabId: null,
+    verticalRatio: 0.5, // 上 : 下
+    bottomRatio: 0.5,   // 下 左 : 右
+  };
+
+  // スプリット配置状態
+  const placementState = {
+    active: false,
+    tabId: null,
+  };
+
+  let splitDividerEl = null;
+  let splitDragging = false;
+
   const profileColors = {
     1: "#e57373",
     2: "#64b5f6",
@@ -700,7 +848,8 @@
   };
 
   /* ===== タブ状態 永続化(localStorage) ===== */
-  const TABS_STATE_KEY = "mindraLightTabsState";
+  const TABS_STATE_KEY =
+    (CONFIG.SAVE_KEY_PREFIX || "") + "mindraLightTabsState";
 
   function serializeTabsState() {
     const currentIndex = tabs.findIndex((t) => t.id === currentTabId);
@@ -713,14 +862,32 @@
     };
   }
 
-  function saveTabsState() {
-    try {
-      const state = serializeTabsState();
-      localStorage.setItem(TABS_STATE_KEY, JSON.stringify(state));
-    } catch (e) {
-      console.error("saveTabsState error", e);
-    }
+function saveTabsState() {
+  try {
+    const state = serializeTabsState();
+
+    // ★ ここ追加：スプリット状態も保存
+    state.split2 = {
+      enabled: splitState.enabled,
+      primaryTabId: splitState.primaryTabId,
+      secondaryTabId: splitState.secondaryTabId,
+      ratio: splitState.ratio
+    };
+
+    state.split3 = {
+      enabled: split3State.enabled,
+      topTabId: split3State.topTabId,
+      bottomLeftTabId: split3State.bottomLeftTabId,
+      bottomRightTabId: split3State.bottomRightTabId,
+      verticalRatio: split3State.verticalRatio,
+      bottomRatio: split3State.bottomRatio
+    };
+
+    localStorage.setItem(TABS_STATE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.error("saveTabsState error", e);
   }
+}
 
   function loadTabsState() {
     try {
@@ -754,6 +921,28 @@
         tabs.length - 1
       );
       setActiveTab(tabs[idx].id);
+
+      // ★ スプリット2復元
+      if (state.split2 && state.split2.enabled) {
+        splitState.enabled = true;
+        splitState.primaryTabId = state.split2.primaryTabId;
+        splitState.secondaryTabId = state.split2.secondaryTabId;
+        splitState.ratio = state.split2.ratio;
+      }
+
+      // ★ スプリット3復元
+      if (state.split3 && state.split3.enabled) {
+        split3State.enabled = true;
+        split3State.topTabId = state.split3.topTabId;
+        split3State.bottomLeftTabId = state.split3.bottomLeftTabId;
+        split3State.bottomRightTabId = state.split3.bottomRightTabId;
+        split3State.verticalRatio = state.split3.verticalRatio;
+        split3State.bottomRatio = state.split3.bottomRatio;
+      }
+
+      applyCurrentLayout();
+      renderTabs();
+
       return true;
     } catch (e) {
       console.error("loadTabsState error", e);
@@ -761,6 +950,7 @@
     }
   }
 
+  /* ===== サイドバー / 設定 / AIパネル ===== */
   function openSidebar() {
     sidebarOpen = true;
     sidebar.classList.add("sidebar-open");
@@ -776,7 +966,6 @@
   sidebarHoverZone.addEventListener("mouseenter", openSidebar);
   sidebar.addEventListener("mouseleave", closeSidebar);
 
-  /* --- 設定パネル --- */
   btnOpenSettings.addEventListener("click", () => {
     settingsOverlay.style.display = "flex";
   });
@@ -791,7 +980,6 @@
     settingsOverlay.style.display = "none";
   });
 
-  /* --- 右サイドバー（AI） --- */
   function setRightSidebar(open) {
     rightSidebarOpen = open;
     if (open) {
@@ -849,11 +1037,13 @@
     input.value = tab && tab.url ? tab.url : "";
   }
 
+  /* ===== タブ描画 ===== */
   function renderTabs() {
     tabListEl.innerHTML = "";
     tabs.forEach((tab) => {
       const item = document.createElement("div");
-      item.className = "tab-item" + (tab.id === currentTabId ? " active" : "");
+      item.className =
+        "tab-item" + (tab.id === currentTabId ? " active" : "");
       item.dataset.tabId = String(tab.id);
 
       const left = document.createElement("div");
@@ -861,7 +1051,8 @@
 
       const dot = document.createElement("span");
       dot.className = "tab-profile-dot";
-      const pid = tab.profileId && profileColors[tab.profileId] ? tab.profileId : 1;
+      const pid =
+        tab.profileId && profileColors[tab.profileId] ? tab.profileId : 1;
       dot.style.backgroundColor = profileColors[pid];
 
       const titleSpan = document.createElement("span");
@@ -871,6 +1062,63 @@
       left.appendChild(dot);
       left.appendChild(titleSpan);
 
+      const rightBox = document.createElement("div");
+      rightBox.style.display = "flex";
+      rightBox.style.alignItems = "center";
+      rightBox.style.gap = "4px";
+
+      const splitBtn = document.createElement("button");
+      splitBtn.className = "tab-split-btn";
+      splitBtn.innerHTML = '<span class="tab-split-icon"></span>';
+
+      const isPrimary = splitState.primaryTabId === tab.id;
+      const isSecondary = splitState.secondaryTabId === tab.id;
+      const isIn3Split =
+        split3State.enabled &&
+        (split3State.topTabId === tab.id ||
+         split3State.bottomLeftTabId === tab.id ||
+         split3State.bottomRightTabId === tab.id);
+
+      if (isPrimary || isSecondary || isIn3Split) {
+        splitBtn.classList.add("active");
+      }
+
+      splitBtn.onclick = (e) => {
+        e.stopPropagation();
+
+        const isPrimaryNow =
+          splitState.enabled && splitState.primaryTabId === tab.id;
+        const isSecondaryNow =
+          splitState.enabled && splitState.secondaryTabId === tab.id;
+        const isIn3Now =
+          split3State.enabled &&
+          (split3State.topTabId === tab.id ||
+           split3State.bottomLeftTabId === tab.id ||
+           split3State.bottomRightTabId === tab.id);
+
+        // すでに何かしらのスプリットに入っている → 押したらスプリット全解除
+        if (isPrimaryNow || isSecondaryNow || isIn3Now) {
+          splitState.enabled = false;
+          splitState.primaryTabId = null;
+          splitState.secondaryTabId = null;
+
+          split3State.enabled = false;
+          split3State.topTabId = null;
+          split3State.bottomLeftTabId = null;
+          split3State.bottomRightTabId = null;
+
+          applyCurrentLayout();
+          renderTabs();
+          saveTabsState();
+          return;
+        }
+
+        // 新しく配置する → オーバーレイ起動
+        placementState.active = true;
+        placementState.tabId = tab.id;
+        setSplitOverlayActive(true);
+      };
+
       const closeBtn = document.createElement("button");
       closeBtn.className = "tab-close-btn";
       closeBtn.textContent = "✕";
@@ -879,8 +1127,11 @@
         closeTab(tab.id);
       };
 
+      rightBox.appendChild(splitBtn);
+      rightBox.appendChild(closeBtn);
+
       item.appendChild(left);
-      item.appendChild(closeBtn);
+      item.appendChild(rightBox);
 
       item.onclick = () => switchTab(tab.id);
 
@@ -897,6 +1148,49 @@
   /* ===== webview 作成／切り替え ===== */
   function attachWebviewEvents(wv, tabId) {
     if (!wv) return;
+
+    // ★ ページのDOMができたタイミングで一回
+    wv.addEventListener("dom-ready", () => {
+      try {
+        wv.insertCSS(`
+          ::-webkit-scrollbar {
+            width: 8px !important;
+            height: 8px !important;
+          }
+          ::-webkit-scrollbar-thumb {
+            background: rgba(120,120,120,0.45) !important;
+            border-radius: 999px !important;
+          }
+          ::-webkit-scrollbar-thumb:hover {
+            background: rgba(120,120,120,0.8) !important;
+          }
+        `);
+      } catch (e) {
+        console.error("insertCSS failed", e);
+      }
+    });
+
+    // ★ ページ読み込み完了時にもう一回（全画面とかで飛んだ場合の保険）
+    wv.addEventListener("did-finish-load", () => {
+      try {
+        wv.insertCSS(`
+          ::-webkit-scrollbar {
+            width: 8px !important;
+            height: 8px !important;
+          }
+          ::-webkit-scrollbar-thumb {
+            background: rgba(120,120,120,0.45) !important;
+            border-radius: 999px !important;
+          }
+          ::-webkit-scrollbar-thumb:hover {
+            background: rgba(120,120,120,0.8) !important;
+          }
+        `);
+      } catch (e) {
+        console.error("insertCSS failed (did-finish-load)", e);
+      }
+    });
+
     wv.addEventListener("did-navigate", (e) => {
       const tab = tabs.find((t) => t.id === tabId);
       if (!tab) return;
@@ -906,6 +1200,7 @@
       renderTabs();
       saveTabsState();
     });
+
     wv.addEventListener("did-navigate-in-page", (e) => {
       const tab = tabs.find((t) => t.id === tabId);
       if (!tab) return;
@@ -915,6 +1210,7 @@
       renderTabs();
       saveTabsState();
     });
+
     wv.addEventListener("found-in-page", (e) => {
       updateFindCount(e.result);
     });
@@ -930,7 +1226,6 @@
     wv.setAttribute("allowpopups", "");
     wv.src = tab.url || "https://www.google.com";
 
-    // 非アクティブ状態で生成
     wv.style.visibility = "hidden";
     wv.style.opacity = "0";
     wv.style.pointerEvents = "none";
@@ -951,31 +1246,353 @@
     return createWebviewForTab(tab);
   }
 
-  function setActiveTab(id) {
-    const tab = tabs.find((t) => t.id === id);
-    if (!tab) return;
-
-    const newWv = getWebviewForTab(tab);
-    if (!newWv) return;
-
+  function hideAllWebviews() {
     document.querySelectorAll("webview").forEach((wv) => {
       wv.style.visibility = "hidden";
       wv.style.opacity = "0";
       wv.style.pointerEvents = "none";
     });
+  }
 
-    newWv.style.visibility = "visible";
-    newWv.style.opacity = "1";
-    newWv.style.pointerEvents = "auto";
+  /* ===== レイアウト適用（2分割＋3分割） ===== */
+  function applyCurrentLayout() {
+    const rect = rootEl.getBoundingClientRect();
+    const w = rect.width;
+    const h = rect.height;
 
-    activeWebviewId = newWv.id;
+    // 3分割モードが有効ならそちらを優先
+    if (
+      split3State.enabled &&
+      (split3State.topTabId ||
+       split3State.bottomLeftTabId ||
+       split3State.bottomRightTabId)
+    ) {
+      hideAllWebviews();
+
+      let vRatio = split3State.verticalRatio;
+      if (!(vRatio > 0.1 && vRatio < 0.9)) vRatio = 0.5;
+
+      let bRatio = split3State.bottomRatio;
+      if (!(bRatio > 0.1 && bRatio < 0.9)) bRatio = 0.5;
+
+      const topHeight = Math.round(h * vRatio);
+      const bottomHeight = h - topHeight;
+      const bottomLeftWidth = Math.round(w * bRatio);
+      const bottomRightWidth = w - bottomLeftWidth;
+
+      if (split3State.topTabId) {
+        const tab = tabs.find((t) => t.id === split3State.topTabId);
+        const wv = getWebviewForTab(tab);
+        if (wv) {
+          wv.style.left = "0px";
+          wv.style.top = "0px";
+          wv.style.width = w + "px";
+          wv.style.height = topHeight + "px";
+          wv.style.visibility = "visible";
+          wv.style.opacity = "1";
+          wv.style.pointerEvents = "auto";
+        }
+      }
+
+      if (split3State.bottomLeftTabId) {
+        const tab = tabs.find((t) => t.id === split3State.bottomLeftTabId);
+        const wv = getWebviewForTab(tab);
+        if (wv) {
+          wv.style.left = "0px";
+          wv.style.top = topHeight + "px";
+          wv.style.width = bottomLeftWidth + "px";
+          wv.style.height = bottomHeight + "px";
+          wv.style.visibility = "visible";
+          wv.style.opacity = "1";
+          wv.style.pointerEvents = "auto";
+        }
+      }
+
+      if (split3State.bottomRightTabId) {
+        const tab = tabs.find((t) => t.id === split3State.bottomRightTabId);
+        const wv = getWebviewForTab(tab);
+        if (wv) {
+          wv.style.left = bottomLeftWidth + "px";
+          wv.style.top = topHeight + "px";
+          wv.style.width = bottomRightWidth + "px";
+          wv.style.height = bottomHeight + "px";
+          wv.style.visibility = "visible";
+          wv.style.opacity = "1";
+          wv.style.pointerEvents = "auto";
+        }
+      }
+
+      if (splitDividerEl) {
+        splitDividerEl.style.display = "none";
+      }
+      return;
+    }
+
+    // 3分割OFF → 2分割 or 単一
+    // スプリットOFF か / タブ不足 なら通常表示
+    if (
+      !splitState.enabled ||
+      !splitState.primaryTabId ||
+      !splitState.secondaryTabId
+    ) {
+      splitState.enabled = false;
+      if (splitDividerEl) splitDividerEl.style.display = "none";
+
+      const tab = getActiveTab();
+      if (!tab) {
+        hideAllWebviews();
+        return;
+      }
+      const wv = getWebviewForTab(tab);
+      if (!wv) {
+        hideAllWebviews();
+        return;
+      }
+
+      hideAllWebviews();
+      wv.style.left = "0px";
+      wv.style.top = "0px";
+      wv.style.width = w + "px";
+      wv.style.height = h + "px";
+      wv.style.visibility = "visible";
+      wv.style.opacity = "1";
+      wv.style.pointerEvents = "auto";
+
+      return;
+    }
+
+    // 2分割ON時
+    let r = splitState.ratio;
+    if (!(r >= SPLIT_MIN_RATIO && r <= SPLIT_MAX_RATIO)) {
+      r = 0.5;
+      splitState.ratio = r;
+    }
+
+    const primary = tabs.find((t) => t.id === splitState.primaryTabId);
+    const secondary = tabs.find((t) => t.id === splitState.secondaryTabId);
+    if (!primary || !secondary) {
+      splitState.enabled = false;
+      applyCurrentLayout();
+      return;
+    }
+
+    const leftWidth = Math.round(w * r - SPLIT_DIVIDER_WIDTH / 2);
+    const dividerX = leftWidth;
+    const rightX = dividerX + SPLIT_DIVIDER_WIDTH;
+    const rightWidth = Math.max(0, w - rightX);
+
+    const wv1 = getWebviewForTab(primary);
+    const wv2 = getWebviewForTab(secondary);
+    if (!wv1 || !wv2) {
+      splitState.enabled = false;
+      applyCurrentLayout();
+      return;
+    }
+
+    hideAllWebviews();
+
+    wv1.style.left = "0px";
+    wv1.style.top = "0px";
+    wv1.style.width = leftWidth + "px";
+    wv1.style.height = h + "px";
+    wv1.style.visibility = "visible";
+    wv1.style.opacity = "1";
+    wv1.style.pointerEvents = "auto";
+
+    wv2.style.left = rightX + "px";
+    wv2.style.top = "0px";
+    wv2.style.width = rightWidth + "px";
+    wv2.style.height = h + "px";
+    wv2.style.visibility = "visible";
+    wv2.style.opacity = "1";
+    wv2.style.pointerEvents = "auto";
+
+    if (splitDividerEl) {
+      splitDividerEl.style.display = "block";
+      splitDividerEl.style.left = dividerX + "px";
+      splitDividerEl.style.top = "0px";
+      splitDividerEl.style.height = h + "px";
+    }
+  }
+
+  /* ===== スロット配置（2分割） ===== */
+  function placeTabIntoSlot(tabId, side) {
+    const tab = tabs.find(t => t.id === tabId);
+    if (!tab) return;
+
+    split3State.enabled = false;
+    split3State.topTabId = null;
+    split3State.bottomLeftTabId = null;
+    split3State.bottomRightTabId = null;
+
+    splitState.enabled = true;
+
+    if (side === "left") {
+      splitState.primaryTabId = tabId;
+      if (!splitState.secondaryTabId || splitState.secondaryTabId === tabId) {
+        const other = tabs.find(t => t.id !== tabId);
+        splitState.secondaryTabId = other ? other.id : null;
+      }
+    } else if (side === "right") {
+      splitState.secondaryTabId = tabId;
+      if (!splitState.primaryTabId || splitState.primaryTabId === tabId) {
+        const other = tabs.find(t => t.id !== tabId);
+        splitState.primaryTabId = other ? other.id : null;
+      }
+    }
+
+    splitState.ratio = splitState.ratio || 0.5;
+
+    applyCurrentLayout();
+    renderTabs();
+    saveTabsState();
+  }
+
+  /* ===== スロット配置（3分割） ===== */
+  function placeTabIntoSlot3(tabId, slotName) {
+    const tab = tabs.find((t) => t.id === tabId);
+    if (!tab) return;
+
+    splitState.enabled = false;
+    splitState.primaryTabId = null;
+    splitState.secondaryTabId = null;
+
+    split3State.enabled = true;
+
+    if (slotName === "top") {
+      split3State.topTabId = tabId;
+    } else if (slotName === "bottom-left") {
+      split3State.bottomLeftTabId = tabId;
+    } else if (slotName === "bottom-right") {
+      split3State.bottomRightTabId = tabId;
+    }
+
+    applyCurrentLayout();
+    renderTabs();
+    saveTabsState();
+  }
+
+  /* ===== オーバーレイクリック ===== */
+  if (splitOverlay) {
+    splitOverlay.addEventListener("click", (e) => {
+      const slot = e.target.closest(".split-slot");
+      if (!placementState.active) {
+        setSplitOverlayActive(false);
+        return;
+      }
+      if (!slot) {
+        placementState.active = false;
+        placementState.tabId = null;
+        setSplitOverlayActive(false);
+        return;
+      }
+
+      const tabId = placementState.tabId;
+      const slotName = slot.dataset.slot;
+
+      placementState.active = false;
+      placementState.tabId = null;
+      setSplitOverlayActive(false);
+
+      if (
+        slotName === "top" ||
+        slotName === "bottom-left" ||
+        slotName === "bottom-right"
+      ) {
+        placeTabIntoSlot3(tabId, slotName);
+      } else {
+        placeTabIntoSlot(tabId, slotName);
+      }
+    });
+  }
+
+  window.addEventListener("resize", () => {
+    applyCurrentLayout();
+  });
+
+  /* --- ウインドウボタン --- */
+  document.getElementById("win-min").onclick = () =>
+    window.mindraWindow.control("minimize");
+  document.getElementById("win-max").onclick = () =>
+    window.mindraWindow.control("maximize");
+  document.getElementById("win-close").onclick = () =>
+    window.mindraWindow.control("close");
+
+  /* --- タイトルバー表示制御 & ドラッグ --- */
+  const topHoverZone = document.getElementById("top-hover-zone");
+  const titlebar = document.getElementById("window-titlebar");
+
+  let dragging = false;
+  let dragStart = { x: 0, y: 0 };
+  let winStart = { x: 0, y: 0 };
+
+  topHoverZone.addEventListener("mouseenter", () => {
+    titlebar.classList.add("visible");
+  });
+
+  titlebar.addEventListener("mouseleave", () => {
+    if (dragging) return;
+    titlebar.classList.remove("visible");
+  });
+
+  titlebar.addEventListener("mousedown", async (e) => {
+    if (e.button !== 0) return;
+    if (e.target.classList.contains("window-btn")) return;
+
+    dragging = true;
+    dragStart = { x: e.screenX, y: e.screenY };
+    const bounds = await window.mindraWindow.getBounds();
+    if (!bounds) return;
+    winStart = { x: bounds.x, y: bounds.y };
+
+    window.addEventListener("mousemove", onDragMove);
+    window.addEventListener("mouseup", onDragEnd);
+  });
+
+  function onDragMove(e) {
+    if (!dragging) return;
+    const dx = e.screenX - dragStart.x;
+    const dy = e.screenY - dragStart.y;
+    window.mindraWindow.setPosition(winStart.x + dx, winStart.y + dy);
+  }
+
+  function onDragEnd() {
+    dragging = false;
+    window.removeEventListener("mousemove", onDragMove);
+    window.removeEventListener("mouseup", onDragEnd);
+  }
+
+  /* ===== タブ操作 ===== */
+  function setActiveTab(id) {
+    const tab = tabs.find((t) => t.id === id);
+    if (!tab) return;
+
     currentTabId = id;
+
+    // 3分割中は全スロット表示なので何もしないでOK
+    if (!split3State.enabled && !splitState.enabled) {
+      applyCurrentLayout();
+    } else if (splitState.enabled) {
+      if (
+        splitState.primaryTabId !== id &&
+        splitState.secondaryTabId !== id
+      ) {
+        splitState.primaryTabId = id;
+      }
+      applyCurrentLayout();
+    } else {
+      applyCurrentLayout();
+    }
+
     syncSidebarUrlInput();
     renderTabs();
     saveTabsState();
   }
 
-  /* ===== タブ操作 ===== */
+  function switchTab(id) {
+    setActiveTab(id);
+  }
+
   function createTab(url = "https://www.google.com", activate = true) {
     const id = nextTabId++;
     const tab = {
@@ -994,10 +1611,6 @@
     }
   }
 
-  function switchTab(id) {
-    setActiveTab(id);
-  }
-
   function closeTab(id) {
     const index = tabs.findIndex((t) => t.id === id);
     if (index === -1) return;
@@ -1013,6 +1626,25 @@
     closedTabs.push({ url: tab.url, title: tab.title, profileId: tab.profileId });
     tabs.splice(index, 1);
 
+    // 2分割から除外
+    if (splitState.primaryTabId === id) splitState.primaryTabId = null;
+    if (splitState.secondaryTabId === id) splitState.secondaryTabId = null;
+    if (!splitState.primaryTabId || !splitState.secondaryTabId) {
+      splitState.enabled = false;
+    }
+
+    // 3分割から除外
+    if (split3State.topTabId === id) split3State.topTabId = null;
+    if (split3State.bottomLeftTabId === id) split3State.bottomLeftTabId = null;
+    if (split3State.bottomRightTabId === id) split3State.bottomRightTabId = null;
+    if (
+      !split3State.topTabId &&
+      !split3State.bottomLeftTabId &&
+      !split3State.bottomRightTabId
+    ) {
+      split3State.enabled = false;
+    }
+
     if (tabs.length === 0) {
       createTab("https://www.google.com", true);
       return;
@@ -1023,6 +1655,7 @@
       setActiveTab(tabs[newIndex].id);
     } else {
       renderTabs();
+      applyCurrentLayout();
       saveTabsState();
     }
   }
@@ -1385,6 +2018,8 @@
       }
     });
   }
+
+  setupSplitDivider();
 
   /* 起動時のタブ（前回状態を復元できなかったときだけ新規タブ） */
   if (!loadTabsState()) {

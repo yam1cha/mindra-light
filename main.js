@@ -1,8 +1,16 @@
-// main.js
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const fs = require("fs").promises;
-const fsSync = require("fs"); // ★ config 読み込み用
+const fsSync = require("fs");
+
+// =============================================
+// ★ 開発版は userData を dev/ に分離
+// =============================================
+if (!app.isPackaged) {
+  const devPath = path.join(app.getPath("userData"), "dev");
+  app.setPath("userData", devPath);
+}
+// =============================================
 
 let mainWindow = null;
 

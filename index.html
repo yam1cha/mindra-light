@@ -578,14 +578,15 @@
       background: rgba(255, 255, 255, 0.08);
       border-left: 1px solid rgba(255, 255, 255, 0.2);
       border-right: 1px solid rgba(0, 0, 0, 0.5);
-      z-index: 15; /* webviewより前、オーバーレイよりは後ろ想定 */
+      z-index: 15;
       cursor: col-resize;
       display: none;
     }
+
     /* ===== スクロールバー（アプリ本体用） ===== */
     ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
+      width: 8px !important;
+      height: 8px !important;
     }
 
     ::-webkit-scrollbar-track {
@@ -593,8 +594,8 @@
     }
 
     ::-webkit-scrollbar-thumb {
-      background: rgba(120, 120, 120, 0.45);
-      border-radius: 999px;
+      background: rgba(120,120,120,0.45) !important;
+      border-radius: 999px !important;
     }
 
     ::-webkit-scrollbar-thumb:hover {
@@ -737,7 +738,6 @@
     splitDividerEl = document.createElement("div");
     splitDividerEl.id = "split-divider";
     rootEl.appendChild(splitDividerEl);
-
   }
 
   const splitOverlay = document.getElementById("split-overlay");
@@ -849,32 +849,32 @@
     };
   }
 
-function saveTabsState() {
-  try {
-    const state = serializeTabsState();
+  function saveTabsState() {
+    try {
+      const state = serializeTabsState();
 
-    // ★ ここ追加：スプリット状態も保存
-    state.split2 = {
-      enabled: splitState.enabled,
-      primaryTabId: splitState.primaryTabId,
-      secondaryTabId: splitState.secondaryTabId,
-      ratio: splitState.ratio
-    };
+      // ★ ここ追加：スプリット状態も保存
+      state.split2 = {
+        enabled: splitState.enabled,
+        primaryTabId: splitState.primaryTabId,
+        secondaryTabId: splitState.secondaryTabId,
+        ratio: splitState.ratio
+      };
 
-    state.split3 = {
-      enabled: split3State.enabled,
-      topTabId: split3State.topTabId,
-      bottomLeftTabId: split3State.bottomLeftTabId,
-      bottomRightTabId: split3State.bottomRightTabId,
-      verticalRatio: split3State.verticalRatio,
-      bottomRatio: split3State.bottomRatio
-    };
+      state.split3 = {
+        enabled: split3State.enabled,
+        topTabId: split3State.topTabId,
+        bottomLeftTabId: split3State.bottomLeftTabId,
+        bottomRightTabId: split3State.bottomRightTabId,
+        verticalRatio: split3State.verticalRatio,
+        bottomRatio: split3State.bottomRatio
+      };
 
-    localStorage.setItem(TABS_STATE_KEY, JSON.stringify(state));
-  } catch (e) {
-    console.error("saveTabsState error", e);
+      localStorage.setItem(TABS_STATE_KEY, JSON.stringify(state));
+    } catch (e) {
+      console.error("saveTabsState error", e);
+    }
   }
-}
 
   function loadTabsState() {
     try {
@@ -1148,50 +1148,40 @@ function saveTabsState() {
   function attachWebviewEvents(wv, tabId) {
     if (!wv) return;
 
-    // ★ ページのDOMができたタイミングで一回
-    wv.addEventListener("dom-ready", () => {
-      try {
-        wv.insertCSS(`
-          ::-webkit-scrollbar {
-            width: 8px !important;
-            height: 8px !important;
-          }
-          ::-webkit-scrollbar-thumb {
-            background: rgba(120,120,120,0.45) !important;
-            border-radius: 999px !important;
-          }
-          ::-webkit-scrollbar-thumb:hover {
-            background: rgba(120,120,120,0.8) !important;
-          }
-        `);
-      } catch (e) {
-        console.error("insertCSS failed", e);
-      }
-    });
-
-    // ★ ページ読み込み完了時にもう一回（全画面とかで飛んだ場合の保険）
+    // ★ ページ読み込み完了時に CSS を注入＋遅延再注入
     wv.addEventListener("did-finish-load", () => {
+      const css = `
+        *::-webkit-scrollbar {
+          width: 8px !important;
+          height: 8px !important;
+        }
+        *::-webkit-scrollbar-track {
+          background: transparent !important;
+        }
+        *::-webkit-scrollbar-thumb {
+          background: rgba(120,120,120,0.45) !important;
+          border-radius: 999px !important;
+        }
+        *::-webkit-scrollbar-thumb:hover {
+          background: rgba(120,120,120,0.8) !important;
+        }
+      `;
       try {
-        wv.insertCSS(`
-          ::-webkit-scrollbar {
-            width: 8px !important;
-            height: 8px !important;
+        wv.insertCSS(css);
+        setTimeout(() => {
+          try {
+            wv.insertCSS(css);
+          } catch (e) {
+            console.error("insertCSS retry failed", e);
           }
-          ::-webkit-scrollbar-thumb {
-            background: rgba(120,120,120,0.45) !important;
-            border-radius: 999px !important;
-          }
-          ::-webkit-scrollbar-thumb:hover {
-            background: rgba(120,120,120,0.8) !important;
-          }
-        `);
+        }, 2000);
       } catch (e) {
         console.error("insertCSS failed (did-finish-load)", e);
       }
     });
 
     wv.addEventListener("did-navigate", (e) => {
-      if (shouldIgnoreNavigationUrl(e.url)) return;   // ★追加
+      if (shouldIgnoreNavigationUrl(e.url)) return;
 
       const tab = tabs.find((t) => t.id === tabId);
       if (!tab) return;
@@ -1203,7 +1193,7 @@ function saveTabsState() {
     });
 
     wv.addEventListener("did-navigate-in-page", (e) => {
-      if (shouldIgnoreNavigationUrl(e.url)) return;   // ★追加
+      if (shouldIgnoreNavigationUrl(e.url)) return;
 
       const tab = tabs.find((t) => t.id === tabId);
       if (!tab) return;
@@ -1225,7 +1215,7 @@ function saveTabsState() {
     wv.id = wid;
 
     const profileId = tab.profileId || 1;
-    wv.setAttribute("partition", "persist:profile-" + profileId);
+    wv.setAttribute("partition", "persist:-profile-" + profileId);
     wv.setAttribute("allowpopups", "");
     wv.src = tab.url || "https://www.google.com";
 
@@ -1559,7 +1549,6 @@ function saveTabsState() {
 
   // タイトルバーからマウスが出たら、少し下に動いたタイミングで隠す
   titlebar.addEventListener("mouseleave", () => {
-    // すぐ消すと違和感あるので、ちょっとだけ遅らせる
     setTimeout(() => {
       hideTitlebar();
     }, 30);
@@ -1568,7 +1557,7 @@ function saveTabsState() {
   // マウスが少し下（Y > 24px）に降りたら隠す
   window.addEventListener("mousemove", (e) => {
     if (!titlebarVisible) return;
-    if (mouseDownInTitlebar) return; // ドラッグ中はそのまま
+    if (mouseDownInTitlebar) return;
     if (e.clientY > 24) {
       hideTitlebar();
     }
@@ -1586,7 +1575,6 @@ function saveTabsState() {
 
     currentTabId = id;
 
-    // 3分割中は全スロット表示なので何もしないでOK
     if (!split3State.enabled && !splitState.enabled) {
       applyCurrentLayout();
     } else if (splitState.enabled) {

@@ -1,6 +1,46 @@
 // preload.js
 const { contextBridge, ipcRenderer } = require("electron");
 
+/* =======================
+   config を引数から復元
+   ======================= */
+function loadConfigFromArgs() {
+  let env = "prod";
+  let config = {};
+
+  try {
+    const argv = process.argv || [];
+
+    const envArg = argv.find(
+      (a) => typeof a === "string" && a.startsWith("--mindra-env=")
+    );
+    if (envArg) {
+      const v = envArg.split("=")[1];
+      if (v === "dev" || v === "prod") env = v;
+    }
+
+    const confArg = argv.find(
+      (a) => typeof a === "string" && a.startsWith("--mindra-config=")
+    );
+    if (confArg) {
+      const b64 = confArg.split("=")[1];
+      // preload では atob が使える（ブラウザ側の関数）
+      const json = atob(b64);
+      const obj = JSON.parse(json);
+      if (obj && typeof obj === "object") {
+        config = obj;
+      }
+    }
+  } catch (e) {
+    console.error("[preload] loadConfigFromArgs error:", e);
+  }
+
+  config.__env = env;
+  return config;
+}
+
+const config = loadConfigFromArgs();
+
 // ウインドウ制御 API
 contextBridge.exposeInMainWorld("mindraWindow", {
   control: (action) => ipcRenderer.invoke("window-control", action),
@@ -11,9 +51,6 @@ contextBridge.exposeInMainWorld("mindraWindow", {
 
 // ショートカット通知 API
 contextBridge.exposeInMainWorld("mindraShortcuts", {
-  /**
-   * main.js から送られてくるショートカットイベントを購読する
-   */
   onShortcut: (handler) => {
     if (typeof handler !== "function") return;
 
@@ -29,31 +66,5 @@ contextBridge.exposeInMainWorld("mindraShortcuts", {
   },
 });
 
-/* ===========================================================
-   コンフィグ読み込み
-   =========================================================== */
-
-const fs = require("fs");
-const path = require("path");
-
-function loadConfig() {
-  const isDev =
-    !process.env.NODE_ENV ||
-    process.env.NODE_ENV === "development" ||
-    !process.argv[0].includes("app.asar");
-
-  const filename = isDev ? "config.dev.json" : "config.prod.json";
-  const configPath = path.join(__dirname, "config", filename);
-
-  try {
-    const raw = fs.readFileSync(configPath, "utf8");
-    return JSON.parse(raw);
-  } catch (err) {
-    console.error("Failed to load config:", err);
-    return {};
-  }
-}
-
-const config = loadConfig();
-
+// config を renderer に出す
 contextBridge.exposeInMainWorld("config", config);

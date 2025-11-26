@@ -1,6 +1,8 @@
+// main.js
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const fs = require("fs").promises;
+const fsSync = require("fs"); // ★ config 読み込み用
 
 let mainWindow = null;
 
@@ -39,6 +41,20 @@ async function saveWindowState() {
     );
   } catch (err) {
     console.error("[window-state] save error:", err);
+  }
+}
+
+/* ===== config を main 側で読む ===== */
+
+function loadConfigInMain(isDev) {
+  const filename = isDev ? "config.dev.json" : "config.prod.json";
+  const configPath = path.join(__dirname, "config", filename);
+  try {
+    const raw = fsSync.readFileSync(configPath, "utf8");
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error("[config] failed to load:", e);
+    return {};
   }
 }
 
@@ -166,6 +182,12 @@ async function createWindow() {
     if (typeof y === "number" && y < 0) y = 0;
   }
 
+  const isDev = !app.isPackaged;
+  const configObj = loadConfigInMain(isDev);
+  const configB64 = Buffer.from(JSON.stringify(configObj), "utf8").toString(
+    "base64"
+  );
+
   mainWindow = new BrowserWindow({
     width: winState.width || 1280,
     height: winState.height || 800,
@@ -182,6 +204,10 @@ async function createWindow() {
       contextIsolation: true,
       sandbox: true,
       webviewTag: true,
+      additionalArguments: [
+        `--mindra-env=${isDev ? "dev" : "prod"}`,
+        `--mindra-config=${configB64}`,
+      ],
     },
   });
 
@@ -190,6 +216,10 @@ async function createWindow() {
   }
 
   mainWindow.loadFile("index.html");
+
+  if (isDev) {// デバッグ用
+    mainWindow.webContents.openDevTools({ mode: "detach" });
+  }
 
   mainWindow.webContents.setUserAgent(
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +

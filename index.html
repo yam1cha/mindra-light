@@ -33,7 +33,7 @@
 
     #window-titlebar {
       position: absolute;
-      top: 0;
+      top: -28px;
       left: 0;
       right: 0;
       height: 28px;
@@ -44,16 +44,16 @@
       border-bottom: 1px solid #b0b0b0;
       padding: 0 8px;
       box-sizing: border-box;
-      transform: translateY(-100%);
       opacity: 0;
-      transition: transform 0.15s ease-out, opacity 0.15s ease-out;
+      transition: top 0.15s ease-out, opacity 0.15s ease-out;
       cursor: default;
       z-index: 110;
       user-select: none;
+      -webkit-app-region: drag;
     }
 
     #window-titlebar.visible {
-      transform: translateY(0);
+      top: 0;
       opacity: 1;
     }
 
@@ -80,6 +80,11 @@
       background: transparent;
       cursor: pointer;
       font-size: 13px;
+      -webkit-app-region: no-drag;
+    }
+
+    .window-btn:focus {
+      outline: none;
     }
 
     .window-btn:hover {
@@ -733,24 +738,6 @@
     splitDividerEl.id = "split-divider";
     rootEl.appendChild(splitDividerEl);
 
-    splitDividerEl.addEventListener("mousedown", (e) => {
-      e.preventDefault();
-      splitDragging = true;
-      document.body.style.cursor = "col-resize";
-    });
-
-    window.addEventListener("mousemove", (e) => {
-      if (!splitDragging || !splitState.enabled) return;
-      const rect = rootEl.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      if (x <= 0 || x >= rect.width) return;
-      let r = x / rect.width;
-      if (r < SPLIT_MIN_RATIO) r = SPLIT_MIN_RATIO;
-      if (r > SPLIT_MAX_RATIO) r = SPLIT_MAX_RATIO;
-      splitState.ratio = r;
-      applyCurrentLayout();
-    });
-
   }
 
   const splitOverlay = document.getElementById("split-overlay");
@@ -1008,6 +995,18 @@ function saveTabsState() {
     }
   }
 
+  function shouldIgnoreNavigationUrl(url) {
+    try {
+      const host = new URL(url).hostname;
+      if (host === "ads.nicovideo.jp" || host === "ad.nicovideo.jp") {
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
   function resolveUrlOrSearch(raw) {
     const text = (raw || "").trim();
     if (!text) return null;
@@ -1192,6 +1191,8 @@ function saveTabsState() {
     });
 
     wv.addEventListener("did-navigate", (e) => {
+      if (shouldIgnoreNavigationUrl(e.url)) return;   // ★追加
+
       const tab = tabs.find((t) => t.id === tabId);
       if (!tab) return;
       tab.url = e.url;
@@ -1202,6 +1203,8 @@ function saveTabsState() {
     });
 
     wv.addEventListener("did-navigate-in-page", (e) => {
+      if (shouldIgnoreNavigationUrl(e.url)) return;   // ★追加
+
       const tab = tabs.find((t) => t.id === tabId);
       if (!tab) return;
       tab.url = e.url;
@@ -1518,49 +1521,63 @@ function saveTabsState() {
   document.getElementById("win-close").onclick = () =>
     window.mindraWindow.control("close");
 
-  /* --- タイトルバー表示制御 & ドラッグ --- */
+  /* --- タイトルバー表示制御（ネイティブドラッグ用） --- */
   const topHoverZone = document.getElementById("top-hover-zone");
   const titlebar = document.getElementById("window-titlebar");
 
-  let dragging = false;
-  let dragStart = { x: 0, y: 0 };
-  let winStart = { x: 0, y: 0 };
+  let titlebarVisible = false;
+  let mouseDownInTitlebar = false;
 
-  topHoverZone.addEventListener("mouseenter", () => {
+  function showTitlebar() {
+    if (titlebarVisible) return;
     titlebar.classList.add("visible");
-  });
+    titlebarVisible = true;
+  }
 
-  titlebar.addEventListener("mouseleave", () => {
-    if (dragging) return;
+  function hideTitlebar() {
+    if (!titlebarVisible) return;
+    if (mouseDownInTitlebar) return; // ドラッグ中っぽいときは消さない
     titlebar.classList.remove("visible");
+    titlebarVisible = false;
+  }
+
+  // 上端 6px にマウスが入ったらタイトルバーを出す
+  topHoverZone.addEventListener("mouseenter", () => {
+    showTitlebar();
   });
 
-  titlebar.addEventListener("mousedown", async (e) => {
+  // タイトルバーでマウスを押したら「ドラッグ中」フラグON
+  titlebar.addEventListener("mousedown", (e) => {
     if (e.button !== 0) return;
-    if (e.target.classList.contains("window-btn")) return;
-
-    dragging = true;
-    dragStart = { x: e.screenX, y: e.screenY };
-    const bounds = await window.mindraWindow.getBounds();
-    if (!bounds) return;
-    winStart = { x: bounds.x, y: bounds.y };
-
-    window.addEventListener("mousemove", onDragMove);
-    window.addEventListener("mouseup", onDragEnd);
+    mouseDownInTitlebar = true;
   });
 
-  function onDragMove(e) {
-    if (!dragging) return;
-    const dx = e.screenX - dragStart.x;
-    const dy = e.screenY - dragStart.y;
-    window.mindraWindow.setPosition(winStart.x + dx, winStart.y + dy);
-  }
+  // ボタンを離したらドラッグ終了
+  window.addEventListener("mouseup", () => {
+    mouseDownInTitlebar = false;
+  });
 
-  function onDragEnd() {
-    dragging = false;
-    window.removeEventListener("mousemove", onDragMove);
-    window.removeEventListener("mouseup", onDragEnd);
-  }
+  // タイトルバーからマウスが出たら、少し下に動いたタイミングで隠す
+  titlebar.addEventListener("mouseleave", () => {
+    // すぐ消すと違和感あるので、ちょっとだけ遅らせる
+    setTimeout(() => {
+      hideTitlebar();
+    }, 30);
+  });
+
+  // マウスが少し下（Y > 24px）に降りたら隠す
+  window.addEventListener("mousemove", (e) => {
+    if (!titlebarVisible) return;
+    if (mouseDownInTitlebar) return; // ドラッグ中はそのまま
+    if (e.clientY > 24) {
+      hideTitlebar();
+    }
+  });
+
+  // ウインドウ外に出たときも念のため隠す
+  window.addEventListener("blur", () => {
+    hideTitlebar();
+  });
 
   /* ===== タブ操作 ===== */
   function setActiveTab(id) {

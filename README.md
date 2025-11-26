@@ -1,6 +1,6 @@
-# Mindra Light Browser
+# Mindra Light Ver.0.2.1
 
-カスタム Electron ベースの軽量ブラウザ。 V0.2.0
+カスタム Electron ベースの軽量ブラウザ。
 
 ## 機能
 

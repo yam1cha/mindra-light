@@ -186,8 +186,6 @@ async function createWindow() {
   if (!winState.isMaximized) {
     if (typeof winState.x === "number") x = winState.x;
     if (typeof winState.y === "number") y = winState.y;
-    if (typeof x === "number" && x < 0) x = 0;
-    if (typeof y === "number" && y < 0) y = 0;
   }
 
   const isDev = !app.isPackaged;
@@ -242,6 +240,23 @@ async function createWindow() {
 
     contents.setWindowOpenHandler((details) => {
       const { url } = details;
+
+      // ★ Google 認証系のポップアップはそのまま許可
+      try {
+        const u = new URL(url);
+        const host = u.hostname;
+
+        if (
+          host === "accounts.google.com" ||
+          host === "oauth2.googleapis.com"
+        ) {
+          return { action: "allow" };
+        }
+      } catch (_) {
+        // URL パース失敗時は何もしない
+      }
+
+      // それ以外の http(s) は今までどおり「新しいタブ」で開く
       if (url.startsWith("http")) {
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send("mindra-shortcut", {
@@ -250,6 +265,8 @@ async function createWindow() {
           });
         }
       }
+
+      // 元のポップアップは作らない
       return { action: "deny" };
     });
   });

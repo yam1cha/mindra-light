@@ -1,16 +1,7 @@
-# Mindra Light Ver.0.2.1
+# Mindra Light
 
 カスタム Electron ベースの軽量ブラウザ。
 
-## 機能
-
--   広告ブロック無しの最軽量バージョン
--   プロファイル切り替え（partition: persist:profile-x）
--   タブ・URLバー・検索（Ctrl+F）
--   ショートカット多数
--   GitHub Actions で Windows / macOS / Linux を自動ビルド
-
-------------------------------------------------------------------------
 
 ## インストール
 
@@ -29,19 +20,6 @@
     npm run build
 
 `dist/` フォルダに各 OS 向けのパッケージが生成されます。
-
-------------------------------------------------------------------------
-
-## フォルダ構成
-
-    MindraLight/
-     ├─ main.js
-     ├─ preload.js
-     ├─ index.html
-     ├─ package.json
-     ├─ .github/workflows/build.yml
-     ├─ .gitignore
-     └─ README.md
 
 ------------------------------------------------------------------------
 

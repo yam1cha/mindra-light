@@ -2,15 +2,15 @@ const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const fs = require("fs").promises;
 const fsSync = require("fs");
+const { initAIBackend } = require("./main/ai-ollama.js");
 
 // =============================================
-// ★ 開発版は userData を dev/ に分離
+// 開発版は userData を dev/ に分離
 // =============================================
 if (!app.isPackaged) {
   const devPath = path.join(app.getPath("userData"), "dev");
   app.setPath("userData", devPath);
 }
-// =============================================
 
 let mainWindow = null;
 
@@ -74,7 +74,7 @@ function sendShortcutToRenderer(payload) {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   try {
     mainWindow.webContents.send("mindra-shortcut", payload);
-  } catch (_) {
+  } catch {
     // ignore
   }
 }
@@ -105,7 +105,7 @@ function attachShortcutsToWebContents(wc) {
       return send("restore-tab");
     }
 
-    // ===== ナビゲーション (Ctrl+[ ], Ctrl+], Alt+←/→) =====
+    // ===== ナビゲーション =====
     if (primary && !shift && !alt && (key === "[" || key === "{")) {
       return send("nav-back");
     }
@@ -156,7 +156,7 @@ function attachShortcutsToWebContents(wc) {
       return send("devtools");
     }
 
-    // ===== タブ番号 (Ctrl+1〜8 / 9=最後) =====
+    // ===== タブ番号 =====
     if (primary && !shift && !alt && key >= "1" && key <= "9") {
       const num = parseInt(key, 10);
       if (num >= 1 && num <= 8) {
@@ -223,8 +223,8 @@ async function createWindow() {
 
   mainWindow.loadFile("index.html");
 
-  if (isDev) {// デバッグ用
-    mainWindow.webContents.openDevTools({ mode: "detach" });
+  if (isDev) {
+//debug    mainWindow.webContents.openDevTools({ mode: "detach" });
   }
 
   mainWindow.webContents.setUserAgent(
@@ -241,7 +241,7 @@ async function createWindow() {
     contents.setWindowOpenHandler((details) => {
       const { url } = details;
 
-      // ★ Google 認証系のポップアップはそのまま許可
+      // Google 認証系のポップアップはそのまま許可
       try {
         const u = new URL(url);
         const host = u.hostname;
@@ -252,11 +252,11 @@ async function createWindow() {
         ) {
           return { action: "allow" };
         }
-      } catch (_) {
-        // URL パース失敗時は何もしない
+      } catch {
+        // ignore parse error
       }
 
-      // それ以外の http(s) は今までどおり「新しいタブ」で開く
+      // それ以外の http(s) は新しいタブで開く
       if (url.startsWith("http")) {
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send("mindra-shortcut", {
@@ -266,7 +266,6 @@ async function createWindow() {
         }
       }
 
-      // 元のポップアップは作らない
       return { action: "deny" };
     });
   });
@@ -331,3 +330,6 @@ app.on("window-all-closed", () => {
     app.quit();
   }
 });
+
+// バックエンド初期化（ここで mindra-ai:chat などの IPC を登録）
+initAIBackend(ipcMain);

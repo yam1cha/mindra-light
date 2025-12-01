@@ -72,8 +72,22 @@ function setSplitOverlayActive(active) {
   });
 }
 
-// root 内の「コンテンツ領域」（タイトルバー＆サイドバーを除いた部分）を計算
+// 「コンテンツ領域」（タイトルバー＆サイドバーを除いた部分）を計算
 function computeContentViewport() {
+  // ここで毎回 root 要素を取りに行く
+  const rootEl = document.getElementById("root");
+  if (!rootEl) {
+    // 念のためのフォールバック（何も描画できないけど落ちはしない）
+    const dummyRect = { left: 0, top: 0, width: 0, height: 0 };
+    return {
+      rootRect: dummyRect,
+      offsetX: 0,
+      offsetY: 0,
+      width: 0,
+      height: 0,
+    };
+  }
+
   const rootRect = rootEl.getBoundingClientRect();
 
   let totalWidth = rootRect.width;
@@ -83,7 +97,9 @@ function computeContentViewport() {
 
   // タイトルバー固定モードなら、その高さ分だけ上から押し出す
   const tb = document.getElementById("window-titlebar");
-  if (titlebarFixedMode && tb) {
+  const isTitlebarFixed =
+    typeof titlebarFixedMode !== "undefined" && titlebarFixedMode;
+  if (isTitlebarFixed && tb) {
     const tbRect = tb.getBoundingClientRect();
     const tbHeight = tbRect.height || 32;
     offsetY = tbHeight;
@@ -805,6 +821,10 @@ function hideAllWebviews() {
 }
 
 function applyCurrentLayout() {
+  // ここで毎回 root を取得（グローバル変数 rootEl をやめる）
+  const rootEl = document.getElementById("root");
+  if (!rootEl) return;
+
   const rect = rootEl.getBoundingClientRect();
   let totalWidth = rect.width;
   let totalHeight = rect.height;
@@ -813,7 +833,9 @@ function applyCurrentLayout() {
 
   // タイトルバー固定モードのときは、そのぶんだけ上から押し出す
   const tb = document.getElementById("window-titlebar");
-  if (titlebarFixedMode && tb) {
+  const isTitlebarFixed =
+    typeof titlebarFixedMode !== "undefined" && titlebarFixedMode;
+  if (isTitlebarFixed && tb) {
     const tbRect = tb.getBoundingClientRect();
     const tbHeight = tbRect.height || 32;
     contentOffsetY = tbHeight;
@@ -848,29 +870,18 @@ function applyCurrentLayout() {
 
   // SplitView 真っ黒キャンバス状態
   if (splitCanvasMode && splitEmpty) {
-    hideAllWebviews();
+    document.querySelectorAll("webview").forEach((wv) => {
+      wv.style.visibility = "hidden";
+      wv.style.opacity = "0";
+      wv.style.pointerEvents = "none";
+    });
     updateSplitViewButtonState();
     return;
   }
 
-  let effectiveRoot = null;
-
-  if (splitCanvasMode) {
-    effectiveRoot = layoutRoot;
-    if (!effectiveRoot) {
-      const tab = getActiveTab();
-      if (!tab) {
-        hideAllWebviews();
-        updateSplitViewButtonState();
-        return;
-      }
-      effectiveRoot = {
-        type: "group",
-        tabs: [tab.id],
-        activeTabId: tab.id,
-      };
-    }
-  } else {
+  // SplitView 無効 or レイアウトが未設定 → 現在のタブを全画面で表示
+  let effectiveRoot = layoutRoot;
+  if (!splitCanvasMode || !layoutRoot) {
     const tab = getActiveTab();
     if (!tab) {
       hideAllWebviews();
@@ -889,16 +900,19 @@ function applyCurrentLayout() {
   function walk(node, x, y, w, h) {
     if (!node) return;
     if (node.type === "group") {
-      const tabId =
-        node.activeTabId ||
-        (Array.isArray(node.tabs) && node.tabs.length > 0 ? node.tabs[0] : null);
-      if (!tabId) return;
-      rects.push({ tabId, x, y, width: w, height: h });
-    } else if (node.type === "split") {
-      const rawRatio =
-        typeof node.ratio === "number" && !Number.isNaN(node.ratio) ? node.ratio : 0.5;
-      const ratio = Math.min(Math.max(rawRatio, 0.1), 0.9);
-
+      const activeId = node.activeTabId || (node.tabs && node.tabs[0]);
+      if (activeId == null) return;
+      rects.push({
+        tabId: activeId,
+        x,
+        y,
+        width: w,
+        height: h,
+      });
+      return;
+    }
+    if (node.type === "split") {
+      const ratio = Math.min(0.9, Math.max(0.1, node.ratio || 0.5));
       if (node.direction === "horizontal") {
         const h1 = Math.round(h * ratio);
         const h2 = h - h1;
@@ -949,7 +963,6 @@ function applyCurrentLayout() {
     }
   });
 
-  lastRectList = rects;
   updateSplitViewButtonState();
 }
 

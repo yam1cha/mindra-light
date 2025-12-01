@@ -1,0 +1,396 @@
+/* Mindra Light - Cool theme (dark neon) */
+
+html[data-theme="cool"] {
+  --bg: linear-gradient(
+    180deg,
+    #05060b 0%,
+    #070814 40%,
+    #060712 100%
+  );
+
+  --side-bg: linear-gradient(
+    180deg,
+    #05060d 0%,
+    #090b17 45%,
+    #080814 100%
+  );
+
+  --ai-bg: #151626;
+
+  --tab-bg: #12131c;
+  --tab-active-bg: #1f2230;
+
+  --tab-fg: #d7d8e0;
+  --border-color: rgba(255, 255, 255, 0.04);
+  --accent: #4a5c9c;
+}
+
+/* ===== 全体背景 ===== */
+
+html[data-theme="cool"] body,
+html[data-theme="cool"] #root {
+  background: var(--bg);
+}
+
+/* ===== タイトルバー ===== */
+
+html[data-theme="cool"] #window-titlebar {
+  background: #181924;
+  border-bottom-color: var(--border-color);
+}
+
+html[data-theme="cool"] .window-title-text {
+  color: #e2e4f2;
+}
+
+html[data-theme="cool"] .window-btn {
+  color: #dcdfea;
+}
+
+html[data-theme="cool"] .window-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html[data-theme="cool"] .window-btn.close:hover {
+  background: #ff5c5c;
+  color: #ffffff;
+}
+
+/* ===== 左サイドバー本体 ===== */
+
+html[data-theme="cool"] #sidebar {
+  background: var(--side-bg);
+  border-right-color: var(--border-color);
+  color: #d7d8e0;
+}
+
+html[data-theme="cool"] #sidebar .sidebar-section-divider {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html[data-theme="cool"] #sidebar .sidebar-title {
+  color: #e3e4f4;
+}
+
+/* ===========================================
+   COOL：左上 4 ボタン（四角＋暗めの緑グラデ）
+   =========================================== */
+
+/* OFF 共通 */
+html[data-theme="cool"] .sidebar-icon-btn {
+  background: linear-gradient(
+    135deg,
+    #050907 0%,
+    #080f0c 100%
+  ) !important;
+  border-radius: 6px;                 /* ← 四角めに戻す */
+  border: 1px solid rgba(0, 255, 150, 0.45) !important;
+  box-shadow: 0 0 6px rgba(0, 255, 150, 0.20);
+  color: #13d26c;
+}
+
+/* OFF ホバー：少しだけ明るく */
+html[data-theme="cool"] .sidebar-icon-btn:hover:not(.active) {
+  background: linear-gradient(
+    135deg,
+    #07110d 0%,
+    #0b1711 100%
+  ) !important;
+}
+
+/* ON（active）＝ 暗めのネオングリーングラデ */
+html[data-theme="cool"] .sidebar-icon-btn.active {
+  background: linear-gradient(
+    135deg,
+    #13d26c 0%,
+    #058048 20%,
+    #080f0c 100%
+  ) !important;
+  border-color: rgba(67, 255, 174, 0.9) !important;
+  color: #13d26c !important;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.7),
+    0 0 8px rgba(40, 200, 130, 0.55);
+}
+
+/* ===== URL入力（青枠＋黒背景＋明るいグレー文字） ===== */
+
+html[data-theme="cool"] #sidebar-url-input {
+  background: #05060a !important;
+  border: 1px solid #2f7aff !important;
+  color: #e7e9f2 !important;
+}
+
+html[data-theme="cool"] #sidebar-url-input::placeholder {
+  color: #868aa0;
+}
+
+html[data-theme="cool"] #sidebar-url-input:focus {
+  border-color: #6ca4ff;
+  box-shadow: 0 0 0 2px rgba(74, 144, 255, 0.4);
+  outline: none;
+}
+
+/* + New Tab ボタン */
+
+html[data-theme="cool"] #btn-new-tab {
+  color: #d3d4dd;
+  background: rgba(255, 255, 255, 0.09);
+  border-radius: 6px;
+}
+
+html[data-theme="cool"] #btn-new-tab:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* =========================================================
+   COOL：Split View ボタン
+   ========================================================= */
+html[data-theme="cool"] #btn-split-view {
+  width: 100%;
+  height: 30px;
+  justify-content: flex-start;
+  padding: 4px 8px;
+  border-radius: 6px;
+
+  background: linear-gradient(
+    135deg,
+    #050b09 0%,
+    #070f0c 100%
+  );
+  border: 1px solid rgba(130, 190, 150, 0.2);
+  color: #cfd8d2;
+  opacity: 0.9;
+  transition: 0.15s ease;
+}
+
+html[data-theme="cool"] #btn-split-view:hover {
+  opacity: 1;
+  background: linear-gradient(
+    135deg,
+    #07110d 0%,
+    #0a1711 100%
+  );
+}
+
+/* Split 中（アクティブ）＝ タブと同じ青グラ＋枠 */
+html[data-theme="cool"] #btn-split-view.active {
+  background: linear-gradient(
+    135deg,
+    #1f2640 0%,
+    #262f58 45%,
+    #1b2038 100%
+  );
+  color: #f5f7ff;
+  border: 1px solid rgba(140, 180, 255, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(10, 12, 26, 0.9),
+    0 0 6px rgba(50, 120, 255, 0.35);
+}
+
+/* ===== タブ一覧 ===== */
+
+html[data-theme="cool"] .tab-item {
+  color: var(--tab-fg);
+}
+
+html[data-theme="cool"] .tab-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* アクティブタブ（暗め青グラ＋枠） */
+
+html[data-theme="cool"] .tab-item.active {
+  background: linear-gradient(
+    135deg,
+    #1f2640 0%,
+    #262f58 45%,
+    #1b2038 100%
+  );
+  color: #f5f7ff;
+  border: 1px solid rgba(140, 180, 255, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(10, 12, 26, 0.9),
+    0 0 6px rgba(50, 120, 255, 0.35);
+}
+
+html[data-theme="cool"] .tab-profile-dot {
+  background: #18ff8b;
+  border-color: rgba(0, 0, 0, 0.6);
+}
+
+html[data-theme="cool"] .tab-close-btn {
+  color: #8a8fb0;
+}
+
+html[data-theme="cool"] .tab-close-btn:hover {
+  color: #ff8a9a;
+}
+
+/* ===== 右サイドバー（AI） ===== */
+
+html[data-theme="cool"] #right-sidebar {
+  background: linear-gradient(
+    135deg,
+    #b9475f 0%,
+    #7a3a6c 26%,
+    #313060 60%,
+    #0b0e1a 100%
+  );
+  color: #f3e5ff;
+  border-left-color: rgba(255, 255, 255, 0.06);
+}
+
+/* AI入力欄 */
+
+html[data-theme="cool"] #ai-input {
+  background: rgba(7, 8, 20, 0.9);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #f3f4ff;
+}
+
+html[data-theme="cool"] #ai-input::placeholder {
+  color: rgba(230, 230, 255, 0.6);
+}
+
+html[data-theme="cool"] #ai-send {
+  background: linear-gradient(135deg, #4fd1ff, #7c3aed);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 0 8px rgba(79, 209, 255, 0.5);
+}
+
+/* ===== ページ内検索 ===== */
+
+html[data-theme="cool"] #find-bar {
+  background: rgba(22, 23, 34, 0.96);
+}
+
+html[data-theme="cool"] #find-input {
+  background: #10111a;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #d7d8e0;
+}
+
+html[data-theme="cool"] #find-close:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* ===== コンテキストメニュー ===== */
+
+[data-theme="cool"] .content-menu {
+  background: #151623;
+  color: #e7e9ff;
+  border-color: rgba(0, 0, 0, 0.6);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="cool"] .content-menu-item {
+  padding: 6px 12px;
+}
+
+[data-theme="cool"] .content-menu-item:hover {
+  background: rgba(115, 130, 255, 0.24);
+}
+
+/* =========================================================
+   COOL テーマ専用：AI再チェックボタン（立体版）
+   ========================================================= */
+[data-theme="cool"] #ai-recheck-btn {
+  position: relative;
+  padding: 10px 28px;
+  border-radius: 999px;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: center;
+
+  background: linear-gradient(145deg, #6a6dff, #4d52ff);
+  color: #ffffff;
+
+  box-shadow:
+    0 10px 20px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+/* 上側のハイライト（ツヤ） */
+[data-theme="cool"] #ai-recheck-btn::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 3px;
+  height: 50%;
+  border-radius: 999px;
+  background: linear-gradient(
+    rgba(255, 255, 255, 0.55),
+    transparent
+  );
+  pointer-events: none;
+}
+
+/* ホバー：ふわっと浮く */
+[data-theme="cool"] #ai-recheck-btn:hover {
+  background: linear-gradient(145deg, #7b7eff, #6064ff);
+  transform: translateY(-2px);
+  box-shadow:
+    0 14px 26px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+/* 押されたとき：少し沈む */
+[data-theme="cool"] #ai-recheck-btn:active {
+  transform: translateY(1px);
+  box-shadow:
+    0 6px 12px rgba(0, 0, 0, 0.4),
+    inset 0 2px 4px rgba(0, 0, 0, 0.45);
+}
+
+/* =========================================================
+   COOL テーマ専用：AIチャットバブル（ネオン系）
+   ========================================================= */
+
+/* Assistant */
+html[data-theme="cool"] .ai-chat-bubble.assistant {
+  background: linear-gradient(
+    135deg,
+    #1f2640 0%,
+    #262f58 45%,
+    #1b2038 100%
+  );
+  color: #e5e7ff;
+  border: 1px solid rgba(120, 150, 255, 0.35);
+  box-shadow: 0 4px 14px rgba(0, 0, 40, 0.55);
+  backdrop-filter: blur(4px);
+}
+
+/* User */
+html[data-theme="cool"] .ai-chat-bubble.user {
+  background: linear-gradient(
+    135deg,
+    #ff77d4 0%,
+    #a82f26 45%,
+    #58201b 100%
+  );
+  color: #ffffff;
+  border: 1px solid rgba(255, 160, 255, 0.5);
+  box-shadow:
+    0 4px 14px rgba(60, 0, 90, 0.55),
+    inset 0 1px 1px rgba(255, 255, 255, 0.35);
+}
+
+
+/* ===== COOL：設定パネル ===== */
+
+html[data-theme="cool"] #settings-overlay {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+html[data-theme="cool"] #settings-panel {
+  background: #101221;
+  border: 1px solid rgba(0, 255, 200, 0.20);
+  color: #d7d8e0;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+}

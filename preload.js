@@ -1,61 +1,49 @@
-// preload.js
 const { contextBridge, ipcRenderer } = require("electron");
 
-/* =======================
-   config を引数から復元
-   ======================= */
-function loadConfigFromArgs() {
-  let env = "prod";
-  let config = {};
+/* ---------------- config ---------------- */
 
+function loadConfigFromArgv() {
   try {
-    const argv = process.argv || [];
-
-    const envArg = argv.find(
-      (a) => typeof a === "string" && a.startsWith("--mindra-env=")
+    const configArg = process.argv.find((arg) =>
+      arg.startsWith("--mindra-config=")
     );
-    if (envArg) {
-      const v = envArg.split("=")[1];
-      if (v === "dev" || v === "prod") env = v;
-    }
+    if (!configArg) return {};
 
-    const confArg = argv.find(
-      (a) => typeof a === "string" && a.startsWith("--mindra-config=")
-    );
-    if (confArg) {
-      const b64 = confArg.split("=")[1];
-      // preload では atob が使える（ブラウザ側の関数）
-      const json = atob(b64);
-      const obj = JSON.parse(json);
-      if (obj && typeof obj === "object") {
-        config = obj;
-      }
-    }
+    const b64 = configArg.substring("--mindra-config=".length);
+    const json = Buffer.from(b64, "base64").toString("utf8");
+    return JSON.parse(json);
   } catch (e) {
-    console.error("[preload] loadConfigFromArgs error:", e);
+    console.error("[preload] loadConfigFromArgv error:", e);
+    return {};
   }
-
-  config.__env = env;
-  return config;
 }
 
-const config = loadConfigFromArgs();
+contextBridge.exposeInMainWorld("config", loadConfigFromArgv());
 
-// ウインドウ制御 API
+/* ---------------- window control ---------------- */
+
 contextBridge.exposeInMainWorld("mindraWindow", {
-  control: (action) => ipcRenderer.invoke("window-control", action),
-  getBounds: () => ipcRenderer.invoke("window-get-bounds"),
-  setPosition: (x, y) =>
-    ipcRenderer.invoke("window-set-position", { x, y }),
+  control(action) {
+    return ipcRenderer.invoke("window-control", action);
+  },
+  minimize() {
+    return ipcRenderer.invoke("window-control", "minimize");
+  },
+  maximize() {
+    return ipcRenderer.invoke("window-control", "maximize");
+  },
+  close() {
+    return ipcRenderer.invoke("window-control", "close");
+  },
 });
 
-// ショートカット通知 API
+/* ---------------- shortcuts ---------------- */
+
 contextBridge.exposeInMainWorld("mindraShortcuts", {
   onShortcut: (handler) => {
     if (typeof handler !== "function") return;
 
     ipcRenderer.removeAllListeners("mindra-shortcut");
-
     ipcRenderer.on("mindra-shortcut", (_event, payload) => {
       try {
         handler(payload);
@@ -66,5 +54,39 @@ contextBridge.exposeInMainWorld("mindraShortcuts", {
   },
 });
 
-// config を renderer に出す
-contextBridge.exposeInMainWorld("config", config);
+/* ---------------- AI (統合版) ---------------- */
+
+contextBridge.exposeInMainWorld("mindraAI", {
+  getStatus: () => ipcRenderer.invoke("mindra-ai:get-status"),
+  preloadModel: () => ipcRenderer.invoke("mindra-ai:preload"),
+  setModel: (modelName) =>
+    ipcRenderer.invoke("mindra-ai:set-model", modelName),
+  chat: (message, options = {}) =>
+    ipcRenderer.invoke("mindra-ai:chat", { message, ...options }),
+  ask: async (message, history = []) => {
+    const res = await ipcRenderer.invoke("mindra-ai:chat", {
+      message,
+      history,
+    });
+
+    if (!res || !res.ok) {
+      return { ok: false, error: res?.error || "AIエラー" };
+    }
+
+    return { ok: true, message: res.text };
+  },
+});
+
+/* ---------------- webview 取得ヘルパー ---------------- */
+
+contextBridge.exposeInMainWorld("mindraViews", {
+  getActiveWebview() {
+    return document.querySelector("webview.active");
+  },
+  getAllWebviews() {
+    return Array.from(document.querySelectorAll("webview"));
+  },
+  getSplitWebviews() {
+    return Array.from(document.querySelectorAll(".split-view webview"));
+  },
+});

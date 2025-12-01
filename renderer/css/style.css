@@ -1,0 +1,904 @@
+/* ===== ここから元のCSS（テーマ共通・ライトベース） ===== */
+
+#split-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: none;
+  z-index: 300;
+}
+
+#split-overlay.active {
+  display: block;
+  pointer-events: auto;
+}
+
+#split-overlay-indicator {
+  position: absolute;
+  background: rgba(64, 156, 255, 0.25);
+  border: 2px solid rgba(64, 156, 255, 0.6);
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.08s ease-out;
+}
+
+#split-overlay-indicator.visible {
+  opacity: 1;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #1e1e1e;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+#root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #f0f0f4;
+}
+
+/* ===== タイトルバー ===== */
+
+#top-hover-zone {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  z-index: 100;
+}
+
+#window-titlebar {
+  position: absolute;
+  top: -28px;
+  left: 0;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #d0d0d0;
+  border-bottom: 1px solid #b0b0b0;
+  padding: 0 8px;
+  box-sizing: border-box;
+  opacity: 0;
+  transition: top 0.15s ease-out, opacity 0.15s ease-out;
+  cursor: default;
+  z-index: 110;
+  user-select: none;
+  -webkit-app-region: drag;
+}
+
+#window-titlebar.visible {
+  top: 0;
+  opacity: 1;
+}
+
+.window-titlebar-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.window-titlebar-left img {
+  width: 16px;
+  height: 16px;
+}
+
+.window-title-text {
+  font-size: 12px;
+  color: #000;
+}
+
+.window-btn {
+  width: 36px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  -webkit-app-region: no-drag;
+}
+
+.window-btn:focus {
+  outline: none;
+}
+
+.window-btn:hover {
+  background: #c4c4c4;
+}
+
+.window-btn.close:hover {
+  background: #ff6b6b;
+  color: #fff;
+}
+
+/* ===== 左サイドバー ===== */
+
+#sidebar-hover-zone {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 6px;
+  z-index: 90;
+}
+
+#sidebar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 240px;
+  background: #f5f5f7;
+  border-right: 1px solid #d0d0d5;
+  padding: 10px 10px 10px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transform: translateX(-100%);
+  opacity: 0;
+  transition: transform 0.15s ease-out, opacity 0.15s ease-out;
+  font-size: 13px;
+  z-index: 95;
+  user-select: none;
+}
+
+#sidebar.sidebar-open {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.sidebar-header-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sidebar-header-left img {
+  width: 18px;
+  height: 18px;
+}
+
+.sidebar-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  letter-spacing: 0.03em;
+}
+
+.sidebar-header-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sidebar-icon-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  background: #e0e0e5;
+  color: #333;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-icon-btn:focus,
+.sidebar-icon-btn:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.sidebar-icon-btn:hover {
+  background: #d0d0d8;
+}
+
+.sidebar-section-divider {
+  height: 1px;
+  margin: 4px 0 6px;
+  background: #d3d3da;
+}
+
+#btn-new-tab {
+  border: none;
+  padding: 4px 4px;
+  border-radius: 6px;
+  background: transparent;
+  color: #444;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+#btn-split-view {
+  border: none;
+  padding: 4px 4px;
+  border-radius: 6px;
+  background: transparent;
+  color: #444;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+#btn-split-view:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+#btn-split-view.split-active {
+  background: #cbd5ff;
+  font-weight: 600;
+}
+
+.icon-splitview,
+.icon-layout-3,
+.icon-layout-4 {
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+}
+
+.sidebar-divider {
+  border: none;
+  border-bottom: 1px solid #555;
+  margin: 6px 0;
+}
+
+#btn-new-tab:hover {
+  background: #e6e6ee;
+}
+
+#btn-new-tab span.plus {
+  font-size: 16px;
+  line-height: 1;
+}
+
+#tab-list {
+  flex: 1;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow-y: auto;
+}
+
+.tab-item {
+  width: 100%;
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: transparent;
+  color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  box-sizing: border-box;
+  font-size: 12px;
+}
+
+.tab-item.tab-drag-source {
+  opacity: 0.4;
+}
+
+.tab-drag-ghost {
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.tab-item:hover {
+  background: #e6e6ee;
+}
+
+.tab-item.active {
+  background: #d8d8e8;
+  font-weight: 600;
+}
+
+.tab-item-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.tab-item-title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+.tab-close-btn {
+  background: transparent;
+  border: none;
+  color: #777;
+  font-size: 13px;
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+}
+
+.tab-close-btn:hover {
+  color: #e81123;
+  font-weight: 700;
+}
+
+.tab-profile-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  background: transparent;
+}
+
+.sidebar-url-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+#sidebar-url-input {
+  flex: 1;
+  padding: 4px 6px;
+  border-radius: 999px;
+  border: 1px solid #ccccd5;
+  font-size: 12px;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+#sidebar-url-input:focus {
+  border-color: #4a90ff;
+  box-shadow: 0 0 0 2px rgba(74, 144, 255, 0.3);
+  outline: none;
+}
+
+/* ===== 右サイドバー（AIパネル） ===== */
+
+#right-sidebar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 320px;
+  background: #f1f1f4;
+  color: #222;
+  border-left: 1px solid #d0d0d5;
+  box-sizing: border-box;
+  padding: 10px;
+  transform: translateX(100%);
+  opacity: 0;
+  transition: transform 0.18s ease-out, opacity 0.18s ease-out;
+  z-index: 90;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+}
+
+#right-sidebar.open {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+/* AIサイドバー本体：チャットは上詰めに表示 */
+#right-sidebar-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;       /* 横いっぱいに広げる */
+  justify-content: flex-start;/* 縦は上から並べる */
+  gap: 0;
+  overflow-y: auto;   /* ← 重要 */
+}
+
+/* ロード中だけ中央寄せにする用クラス */
+#right-sidebar-main.ai-loading {
+  align-items: center;
+  justify-content: center;
+}
+
+#ai-download-btn {
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: none;
+  background: #6366f1;
+  color: #ffffff;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+}
+
+#ai-input-row {
+  margin-top: 0;
+  display: flex;
+  gap: 6px;
+  padding-top: 6px;
+}
+
+#ai-input {
+  flex: 1;
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid #ccccd5;
+  font-size: 12px;
+  background: #eeeeee;
+  color: #999999;
+}
+
+#ai-send {
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: none;
+  font-size: 11px;
+  background: #bbbbbb;
+  color: #ffffff;
+}
+
+/* ===== 設定パネル ===== */
+
+#settings-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  display: none;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+#settings-panel {
+  margin: 40px 0 0 40px;
+  width: 260px;
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  font-size: 12px;
+  background: transparent;
+  color: inherit;
+}
+
+
+#settings-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+#settings-panel-title {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+#settings-panel-close {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* ===== webview ===== */
+
+webview {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+  z-index: 10;
+}
+
+/* ===== プロファイル選択メニュー ===== */
+
+#profile-overlay {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  z-index: 280;
+  display: none;
+}
+
+#profile-menu {
+  position: absolute;
+  min-width: 200px;
+  background: #ffffff;
+  border-radius: 6px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+  padding: 4px 0;
+  z-index: 300;
+  display: none;
+  font-size: 13px;
+}
+
+.profile-menu-item {
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.profile-menu-item:hover {
+  background: #e5e5e5;
+}
+
+.profile-menu-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
+}
+
+.profile-menu-label {
+  flex: 1;
+}
+
+/* ===== ページ内検索バー ===== */
+
+#find-bar {
+  position: absolute;
+  top: 32px;
+  right: 16px;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  background: rgba(245, 245, 248, 0.96);
+  padding: 4px 6px;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  z-index: 210;
+  font-size: 12px;
+}
+
+#find-input {
+  width: 160px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid #b8b8c8;
+  font-size: 12px;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+#find-count {
+  min-width: 60px;
+  text-align: right;
+  color: #555;
+}
+
+#find-close {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+}
+
+#find-close:hover {
+  background: #e0e0e5;
+}
+
+.tab-split-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0 4px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+}
+
+.tab-split-btn.active {
+  opacity: 1;
+}
+
+.tab-split-btn:hover {
+  opacity: 1;
+}
+
+.tab-split-icon {
+  position: relative;
+  width: 14px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid #b0b0b8;
+  box-sizing: border-box;
+}
+
+.tab-split-icon::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 1px;
+  bottom: 1px;
+  width: 1px;
+  transform: translateX(-50%);
+  background: #b0b0b8;
+}
+
+#split-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  border-right: 1px solid rgba(0, 0, 0, 0.5);
+  z-index: 15;
+  cursor: col-resize;
+  display: none;
+}
+
+::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(120, 120, 120, 0.45) !important;
+  border-radius: 999px !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 120, 120, 0.8);
+}
+
+/* 共通の形 */
+.sidebar-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  background: #e0e0e5;
+  color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.15s ease;
+}
+
+.sidebar-icon-btn:hover {
+  background: #d4d4dd;
+}
+
+/* ON 状態（どのテーマでも最低限これが効く） */
+.sidebar-icon-btn.active {
+  background: #6366f1;
+  color: #fff;
+}
+
+/* 共通のコンテキストメニュー */
+.content-menu {
+  position: fixed;
+  min-width: 160px;
+  background: #f2f2f2;
+  color: #222;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  padding: 4px 0;
+  font-size: 13px;
+  user-select: none;
+  z-index: 1950;
+}
+
+.content-menu-item {
+  padding: 6px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.content-menu-item:hover {
+  background: #e5e5e5;
+}
+
+/* =========================================================
+   Mindra Light - AI Theme Variables
+   ========================================================= */
+:root {
+  /* User バブル（右） */
+  --ai-user-bg: #6366f1;
+  --ai-user-fg: #ffffff;
+
+  /* Assistant バブル（左） */
+  --ai-assist-bg: #e4e4ee;
+  --ai-assist-fg: #222222;
+
+  /* ボタン */
+  --ai-button-bg: #6366f1;
+  --ai-button-bg-hover: #5558e8;
+  --ai-button-fg: #ffffff;
+
+  /* 入力欄 */
+  --ai-input-bg: #ffffff;
+  --ai-input-fg: #000000;
+  --ai-input-border: #ccccd5;
+  --ai-input-ph: #999999;
+
+  /* サイドバー背景 */
+  --ai-panel-bg: #f1f1f4;
+}
+
+/* サイドバー背景 */
+#right-sidebar {
+  background: var(--ai-panel-bg);
+}
+
+/* =========================================================
+   チャットコンテナ
+   ========================================================= */
+#ai-chat-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 4px;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+/* 行全体（必ず横幅いっぱい取る） */
+.ai-chat-row {
+  width: 100%;
+  display: flex;
+  margin-bottom: 4px;
+  box-sizing: border-box;
+}
+
+/* ユーザー（右寄せ＋左に余白） */
+.ai-chat-row.user {
+  justify-content: flex-end;
+  padding-left: 40px;   /* 右端から少しだけ内側に寄せる */
+}
+
+/* AI（左寄せ＋右に余白） */
+.ai-chat-row.assistant {
+  justify-content: flex-start;
+  padding-right: 40px;  /* 左端から少しだけ内側に寄せる */
+}
+
+/* バブル共通 */
+.ai-chat-bubble {
+  display: inline-block;
+  max-width: 100%;
+  padding: 6px 8px;
+  border-radius: 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 12px;
+  box-sizing: border-box;
+}
+
+/* User バブル（右） */
+.ai-chat-bubble.user {
+  background: var(--ai-user-bg);
+  color: var(--ai-user-fg);
+  border-bottom-right-radius: 2px;
+}
+
+/* Assistant バブル（左） */
+.ai-chat-bubble.assistant {
+  background: var(--ai-assist-bg);
+  color: var(--ai-assist-fg);
+  border-bottom-left-radius: 2px;
+}
+
+/* =========================================================
+   再チェックボタン（中央）
+   ========================================================= */
+#ai-recheck-btn {
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: none;
+  font-size: 13px;
+  background: var(--ai-button-bg);
+  color: var(--ai-button-fg);
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  width: auto;                 /* ← 横幅の自動化 */
+  max-width: 160px;            /* ← 伸び防止 */
+  text-align: center;
+}
+
+#ai-recheck-btn:hover {
+  background: var(--ai-button-bg-hover);
+}
+
+/* =========================================================
+   入力欄 + 送信ボタン
+   ========================================================= */
+#ai-input-row {
+  display: flex;
+  gap: 6px;
+  padding: 6px 8px 4px 8px;
+  border-top: 1px solid #dddddd;
+  box-sizing: border-box;
+}
+
+#ai-input {
+  flex: 1;
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--ai-input-border);
+  font-size: 12px;
+  background: var(--ai-input-bg);
+  color: var(--ai-input-fg);
+  box-sizing: border-box;
+  resize: none;
+}
+
+/* placeholder の色もテーマ変数で */
+#ai-input::placeholder {
+  color: var(--ai-input-ph);
+}
+
+/* フォーカス時の枠消す */
+#ai-input:focus {
+  outline: none;
+  box-shadow: none;
+  border-color: var(--ai-input-border);
+}
+
+#ai-send {
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: none;
+  font-size: 11px;
+  background: #bbbbbb;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+/* ====== 状態（チェック中 / 未接続）ゾーン ====== */
+#ai-status-zone {
+  flex: 1;                    /* ← ここ必須（縦を取る） */
+  display: flex;
+  flex-direction: column;
+  align-items: center;        /* 横中央 */
+  justify-content: center;    /* 縦中央 */
+  gap: 10px;
+  padding: 20px 0;
+  text-align: center;
+  box-sizing: border-box;
+}
+

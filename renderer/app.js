@@ -21,6 +21,7 @@ const settingsOverlay = document.getElementById("settings-overlay");
 const settingsPanel = document.getElementById("settings-panel");
 const settingsCloseBtn = document.getElementById("settings-panel-close");
 const btnOpenSettings = document.getElementById("btn-open-settings");
+const settingsRoot = document.getElementById("settings-root");
 const LEFT_SIDEBAR_WIDTH = 240;
 const RIGHT_SIDEBAR_WIDTH = 320;
 
@@ -39,6 +40,8 @@ if (newTabBtn) {
   newTabBtn.onclick = () => {
     // ★ SplitView中なら、一旦抜ける（レイアウトは保持）
     exitSplitViewPreserveLayout();
+    // ★ボタンの見た目も同期
+    updateSplitViewButtonStyle();
 
     // 通常モードとして新しいタブを開く
     createTab("https://www.google.com", true);
@@ -47,7 +50,8 @@ if (newTabBtn) {
 
 if (splitViewBtn) {
   splitViewBtn.onclick = () => {
-    handleSplitViewClick();
+    handleSplitViewClick();        // 実際の分割処理
+    updateSplitViewButtonStyle();  // splitCanvasMode の状態を見て見た目反映
   };
 }
 
@@ -58,11 +62,11 @@ let nextTabId = 1;
 let activeWebviewId = null;
 let nextWebviewId = 1;
 
-let sidebarOpen = true;
-let sidebarShrinkMode = true; // デフォルトで押し出しモード
+let sidebarOpen = true;       // 左サイドバー
+let sidebarShrinkMode = true; // 左サイドバー押し出しモード
+let rightSidebarOpen = true;  // 右サイドバー
+let titlebarFixedMode = true; // タイトルバー
 let profileMenuOpen = false;
-let rightSidebarOpen = false;
-let titlebarFixedMode = true; // ★ タイトルバー固定モード（デフォルト固定）
 
 function openSidebar() {
   sidebarOpen = true;
@@ -70,7 +74,7 @@ function openSidebar() {
     sidebar.classList.add("sidebar-open");
   }
   applyCurrentLayout();
-  updateTitlebarWidth();  // ★追加
+  updateTitlebarWidth();
 }
 
 function closeSidebar() {
@@ -81,7 +85,7 @@ function closeSidebar() {
     sidebar.classList.remove("sidebar-open");
   }
   applyCurrentLayout();
-  updateTitlebarWidth();  // ★追加
+  updateTitlebarWidth();
 }
 
 const profileColors = {
@@ -108,7 +112,6 @@ function serializeTabsState() {
       profileId: t.profileId || 1,
     })),
     currentTabIndex: currentIndex < 0 ? 0 : currentIndex,
-    // ★ SplitView 部分は splitview.js 側のヘルパーに委譲
     split: serializeSplitStateForTabs(tabs, currentTabId),
     sidebar: {
       open: sidebarOpen ? 1 : 0,
@@ -143,7 +146,6 @@ function loadTabsState() {
     nextWebviewId = 1;
     activeWebviewId = null;
 
-    // ★ SplitView 状態の初期化は splitview.js 側に委譲
     resetSplitStateBeforeLoad();
 
     // タブ復元
@@ -222,6 +224,7 @@ function loadTabsState() {
     // ★ サイドバーのモードボタンの色を復元状態に合わせてセット
     updateSidebarModeButtonStyle();
     updateTitlebarModeButtonStyle();
+    updateSplitViewButtonStyle();
     updateSidebarUrlInputEnabled();
 
     return true;
@@ -248,21 +251,6 @@ btnToggleSidebarMode.addEventListener("click", () => {
 
   updateTitlebarWidth();
 });
-
-// ★ タイトルバー固定モード切替
-function updateTitlebarModeButtonStyle() {
-  if (!btnToggleTitlebarMode) return;
-
-  if (titlebarFixedMode) {
-    // 固定モード → 色付き
-    btnToggleTitlebarMode.style.background = "#6366f1";
-    btnToggleTitlebarMode.style.color = "#fff";
-  } else {
-    // ホバーモード → グレー
-    btnToggleTitlebarMode.style.background = "#e0e0e5";
-    btnToggleTitlebarMode.style.color = "#333";
-  }
-}
 
 // タイトルバー固定モード切り替えボタン
 if (btnToggleTitlebarMode) {
@@ -295,39 +283,66 @@ if (btnToggleTitlebarMode) {
   });
 }
 
+// 見た目は CSS に任せて、ここでは active クラスだけ切り替える
+function setToggleButtonState(btn, isOn) {
+  if (!btn) return;
+  btn.classList.toggle("active", !!isOn);
+
+  // インラインスタイルは使わない（テーマごとの CSS に任せる）
+  btn.style.background = "";
+  btn.style.color = "";
+}
+
+// ===== トグル系ボタンの見た目制御（共通） =====
+function setToggleButtonVisual(btn, on) {
+  if (!btn) return;
+
+  // CSS クラスにまかせるので、インライン style はリセット
+  btn.classList.toggle("active", !!on);
+  btn.style.background = "";
+  btn.style.color = "";
+}
+
 function updateSidebarModeButtonStyle() {
   if (!btnToggleSidebarMode) return;
+  setToggleButtonVisual(btnToggleSidebarMode, sidebarShrinkMode);
+}
 
-  if (sidebarShrinkMode) {
-    // 固定（押し出し）モード → 色付き状態
-    btnToggleSidebarMode.style.background = "#6366f1";
-    btnToggleSidebarMode.style.color = "#fff";
-  } else {
-    // オーバーレイモード → 普通のグレー
-    btnToggleSidebarMode.style.background = "#e0e0e5";
-    btnToggleSidebarMode.style.color = "#333";
-  }
+function updateTitlebarModeButtonStyle() {
+  if (!btnToggleTitlebarMode) return;
+  setToggleButtonVisual(btnToggleTitlebarMode, titlebarFixedMode);
 }
 
 function setRightSidebar(open) {
   rightSidebarOpen = open;
+
   if (open) {
     rightSidebar.classList.add("open");
-    btnToggleAI.style.background = "#6366f1";
-    btnToggleAI.style.color = "#fff";
   } else {
     rightSidebar.classList.remove("open");
-    btnToggleAI.style.background = "#e0e0e5";
-    btnToggleAI.style.color = "#333";
   }
-  // AIパネルの開閉に合わせてレイアウトを更新
+
+  // AI ボタンの見た目は CSS にまかせる
+  setToggleButtonVisual(btnToggleAI, open);
+
+  // レイアウトとタイトルバー幅更新
   applyCurrentLayout();
+  updateTitlebarWidth();  // もともと呼んでいた関数名そのまま
+}
 
-  // タイトルバー幅を更新
-  updateTitlebarWidth();
+// Split View ボタンの見た目
+function updateSplitViewButtonStyle() {
+  if (!splitViewBtn) return;
+  // splitCanvasMode は splitview.js 側と共有してるフラグ
+  setToggleButtonVisual(splitViewBtn, splitCanvasMode);
+}
 
-  // 状態を保存
-  saveTabsState();
+// 設定（テーマ/LLM）が変わったときにアプリ側へ反映
+function applySettingsFromSettingsModule(newSettings) {
+  if (!newSettings || !newSettings.general) return;
+
+  const theme = newSettings.general.theme || "cool";
+  document.documentElement.setAttribute("data-theme", theme);
 }
 
 // 設定パネル制御
@@ -542,6 +557,9 @@ function renderTabs() {
       // ★ SplitView から通常表示に戻る処理はヘルパーにまとめる
       exitSplitViewPreserveLayout();
 
+      // ★ボタンの見た目も更新
+      updateSplitViewButtonStyle();
+
       // 通常タブとして表示
       setActiveTab(tab.id);
     };
@@ -630,6 +648,9 @@ function createWebviewForTab(tab) {
   const wv = document.createElement("webview");
   const wid = "wv-" + nextWebviewId++;
   wv.id = wid;
+
+  // ★ SplitView 検索のために必要
+  wv.dataset.tabId = tab.id;
 
   const profileId = tab.profileId || 1;
   wv.setAttribute("partition", "persist:profile-" + profileId);
@@ -1152,26 +1173,13 @@ function ensureContentMenu() {
   if (contentMenu) return;
 
   contentMenu = document.createElement("div");
-  contentMenu.style.position = "fixed";
-  contentMenu.style.minWidth = "160px";
-
-  /* --- ★ 明るいグレーの普通のメニュー風に変更 ★ --- */
-  contentMenu.style.background = "#f2f2f2";
-  contentMenu.style.color = "#222";
-  contentMenu.style.border = "1px solid #cccccc";
-  contentMenu.style.borderRadius = "4px";
-  contentMenu.style.boxShadow = "0 4px 8px rgba(0,0,0,0.15)";
-  contentMenu.style.padding = "4px 0";
-  contentMenu.style.fontSize = "13px";
-  contentMenu.style.userSelect = "none";
-  contentMenu.style.zIndex = "1950";
-  contentMenu.style.display = "none";
+  contentMenu.id = "content-menu";
+  contentMenu.className = "content-menu";
 
   document.body.appendChild(contentMenu);
 
-  // メニュー以外をクリックしたら閉じる
   document.addEventListener("mousedown", (e) => {
-    if (!contentMenu || contentMenu.style.display !== "block") return;
+    if (!contentMenu || contentMenu.style.display === "none") return;
     if (!contentMenu.contains(e.target)) {
       hideContentMenu();
     }
@@ -1190,16 +1198,8 @@ function hideContentMenu() {
 function addContentMenuItem(label, handler) {
   const item = document.createElement("div");
   item.textContent = label;
-  item.style.padding = "6px 12px";
-  item.style.cursor = "pointer";
-  item.style.whiteSpace = "nowrap";
+  item.className = "content-menu-item";
 
-  item.addEventListener("mouseenter", () => {
-    item.style.background = "#e5e5e5";
-  });
-  item.addEventListener("mouseleave", () => {
-    item.style.background = "transparent";
-  });
   item.addEventListener("click", (e) => {
     e.stopPropagation();
     hideContentMenu();
@@ -1330,6 +1330,7 @@ if (window.mindraShortcuts && window.mindraShortcuts.onShortcut) {
       case "new-tab":
         // ★ SplitView中なら抜けてレイアウト保持
         exitSplitViewPreserveLayout();
+        updateSplitViewButtonStyle();
         createTab("https://www.google.com", true);
         break;
       case "new-tab-with-url":
@@ -1414,9 +1415,27 @@ if (!loaded) {
   // デフォルト状態（初回起動など）
   sidebarOpen = true;
   sidebarShrinkMode = true;
-  rightSidebarOpen = false;
+  rightSidebarOpen = true;
+  titlebarFixedMode = true;
+
+  // サイドバーを見た目上も「開いた状態」に
+  if (sidebar) {
+    sidebar.classList.add("sidebar-open");
+  }
+
+  // タイトルバー固定モードなので、最初から表示しておく
+  if (titlebar) {
+    titlebar.classList.add("visible");
+    titlebarVisible = true;
+  }
+
   createTab("https://www.google.com", true);
 }
+
+// ★ 起動直後にボタンの色とURL入力状態を反映
+updateSidebarModeButtonStyle();
+updateTitlebarModeButtonStyle();
+updateSplitViewButtonStyle();
 updateSidebarUrlInputEnabled();
 
 // 左サイドバーの状態を反映
@@ -1432,3 +1451,47 @@ if (sidebarShrinkMode) {
 if (rightSidebar) {
   setRightSidebar(rightSidebarOpen);
 }
+
+// 設定画面の初期化
+if (window.MindraSettings && settingsRoot) {
+  window.MindraSettings.initSettingsUI(settingsRoot, {
+    onSettingsChanged: applySettingsFromSettingsModule,
+  });
+
+  // 起動時に一回だけ設定を反映（テーマなど）
+  const current = window.MindraSettings.getSettings && window.MindraSettings.getSettings();
+  if (current) {
+    applySettingsFromSettingsModule(current);
+  }
+}
+
+// ===== SplitView の全 WebView を取得 =====
+window.getSplitWebviews = function () {
+  const result = [];
+
+  // layoutRoot はアプリ全体のレイアウトツリー
+  if (!window.layoutRoot) {
+    console.warn("layoutRoot が見つかりません");
+    return result;
+  }
+
+  function walk(node) {
+    if (!node) return;
+
+    // タブを表示するノード
+    if (node.type === "tab" && node.tabId) {
+      const wv = document.querySelector(`webview[data-tab-id="${node.tabId}"]`);
+      if (wv) result.push(wv);
+    }
+
+    // SplitView（左右）
+    if (node.type === "split") {
+      walk(node.left);
+      walk(node.right);
+    }
+  }
+
+  walk(window.layoutRoot);
+
+  return result;
+};

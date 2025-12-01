@@ -854,7 +854,7 @@ function applyCurrentLayout() {
 
   // 右側の AI サイドバー
   if (rightSidebarOpen) {
-    const sidebarWidth = 320; // #right-sidebar の幅
+    const sidebarWidth = RIGHT_SIDEBAR_WIDTH; // #right-sidebar の幅
     if (sidebarWidth > 0 && sidebarWidth < totalWidth) {
       totalWidth = Math.max(0, totalWidth - sidebarWidth);
     }

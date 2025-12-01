@@ -23,7 +23,7 @@ const settingsCloseBtn = document.getElementById("settings-panel-close");
 const btnOpenSettings = document.getElementById("btn-open-settings");
 const settingsRoot = document.getElementById("settings-root");
 const LEFT_SIDEBAR_WIDTH = 240;
-const RIGHT_SIDEBAR_WIDTH = 320;
+const RIGHT_SIDEBAR_WIDTH = 240;
 
 // ★ SplitView 用のオーバーレイ要素を window にも公開しておく
 window.splitOverlayEl = splitOverlayEl;
@@ -1246,6 +1246,9 @@ function showContentMenu(x, y, tabId = null) {
     addContentMenuItem("進む", () => {
       performTabHistory(targetId, "forward");
     });
+    addContentMenuItem("再読み込み", () => {
+      reload(true);
+    });
     addContentMenuItem("分割解除", () => {
       splitCancelForTab(targetId);
     });
@@ -1256,6 +1259,9 @@ function showContentMenu(x, y, tabId = null) {
     });
     addContentMenuItem("進む", () => {
       performTabHistory(targetId, "forward");
+    });
+    addContentMenuItem("再読み込み", () => {
+      reload(true);
     });
     addContentMenuItem("タブを閉じる", () => {
       if (targetId != null) {

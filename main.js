@@ -224,7 +224,7 @@ async function createWindow() {
   mainWindow.loadFile("index.html");
 
   if (isDev) {
-//debug    mainWindow.webContents.openDevTools({ mode: "detach" });
+    //debug    mainWindow.webContents.openDevTools({ mode: "detach" });
   }
 
   mainWindow.webContents.setUserAgent(
@@ -315,21 +315,41 @@ ipcMain.handle("window-set-position", (event, payload) => {
   }
 });
 
-app.whenReady().then(async () => {
-  await createWindow();
+// =====================================================
+// 二重起動防止（Single Instance Lock）
+// =====================================================
+const gotLock = app.requestSingleInstanceLock();
 
-  app.on("activate", async () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      await createWindow();
+if (!gotLock) {
+  // すでに別の MindraLight が動いているので即終了
+  app.quit();
+} else {
+  // 2つ目以降の起動要求が来たときは既存ウィンドウを前面へ
+  app.on("second-instance", () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+      }
+      mainWindow.focus();
     }
   });
-});
 
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
-});
+  app.whenReady().then(async () => {
+    await createWindow();
 
-// バックエンド初期化（ここで mindra-ai:chat などの IPC を登録）
-initAIBackend(ipcMain);
+    app.on("activate", async () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        await createWindow();
+      }
+    });
+
+    // バックエンド初期化（ここで mindra-ai:chat などの IPC を登録）
+    initAIBackend(ipcMain);
+  });
+
+  app.on("window-all-closed", () => {
+    if (process.platform !== "darwin") {
+      app.quit();
+    }
+  });
+}

@@ -2,7 +2,7 @@
 
 (function () {
   // ★ デフォルトテーマ（起動時に saved がなければこれになる）
-  const DEFAULT_THEME_ID = "cool";
+  const DEFAULT_THEME_ID = "cute";
 
   // ★ 利用可能なテーマ一覧
   const THEMES = {

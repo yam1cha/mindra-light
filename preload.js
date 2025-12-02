@@ -1,5 +1,57 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
+/* ---------------- settings bridge ---------------- */
+
+contextBridge.exposeInMainWorld("mindraSettingsBridge", {
+  // 一般フラグを main に送る（既存の adblock / popup 用）
+  updateGeneralFlags(flags) {
+    try {
+      ipcRenderer.send("settings:update-general", flags || {});
+    } catch (e) {
+      console.error("[preload] updateGeneralFlags error:", e);
+    }
+  },
+
+  // プロファイルショートカットを作る
+  createProfileShortcut() {
+    try {
+      return ipcRenderer.invoke("profile:create-shortcut");
+    } catch (e) {
+      console.error("[preload] createProfileShortcut error:", e);
+      return Promise.resolve({
+        ok: false,
+        error: e && e.message ? e.message : String(e),
+      });
+    }
+  },
+
+  // プロファイル一覧
+  listProfiles() {
+    try {
+      return ipcRenderer.invoke("profile:list");
+    } catch (e) {
+      console.error("[preload] listProfiles error:", e);
+      return Promise.resolve({
+        ok: false,
+        error: e && e.message ? e.message : String(e),
+      });
+    }
+  },
+
+  // プロファイル削除
+  deleteProfile(profileId) {
+    try {
+      return ipcRenderer.invoke("profile:delete", profileId);
+    } catch (e) {
+      console.error("[preload] deleteProfile error:", e);
+      return Promise.resolve({
+        ok: false,
+        error: e && e.message ? e.message : String(e),
+      });
+    }
+  },
+});
+
 /* ---------------- config ---------------- */
 
 function loadConfigFromArgv() {
@@ -54,7 +106,7 @@ contextBridge.exposeInMainWorld("mindraShortcuts", {
   },
 });
 
-/* ---------------- AI (統合版) ---------------- */
+/* ---------------- AI ---------------- */
 
 contextBridge.exposeInMainWorld("mindraAI", {
   getStatus: () => ipcRenderer.invoke("mindra-ai:get-status"),
@@ -88,5 +140,68 @@ contextBridge.exposeInMainWorld("mindraViews", {
   },
   getSplitWebviews() {
     return Array.from(document.querySelectorAll(".split-view webview"));
+  },
+});
+
+/* ---------------- 履歴 ---------------- */
+
+contextBridge.exposeInMainWorld("mindraHistory", {
+  async getRecent(limit = 200) {
+    return await ipcRenderer.invoke("history:get-recent", { limit });
+  },
+});
+
+/* ---------------- ログ出力 ---------------- */
+
+contextBridge.exposeInMainWorld("mindraLog", {
+  info(message, extra) {
+    try {
+      ipcRenderer.send("mindra-log", {
+        level: "INFO",
+        message,
+        extra,
+      });
+    } catch (e) {
+      console.error("[preload] mindraLog.info error:", e);
+    }
+  },
+  warn(message, extra) {
+    try {
+      ipcRenderer.send("mindra-log", {
+        level: "WARN",
+        message,
+        extra,
+      });
+    } catch (e) {
+      console.error("[preload] mindraLog.warn error:", e);
+    }
+  },
+  error(message, extra) {
+    try {
+      ipcRenderer.send("mindra-log", {
+        level: "ERROR",
+        message,
+        extra,
+      });
+    } catch (e) {
+      console.error("[preload] mindraLog.error error:", e);
+    }
+  },
+});
+
+/* ---------------- ログフォルダ操作 ---------------- */
+
+contextBridge.exposeInMainWorld("mindraLogs", {
+  async openFolder() {
+    try {
+      const res = await ipcRenderer.invoke("logs:open-folder");
+      return res || { ok: false, error: "unknown error" };
+    } catch (e) {
+      console.error("[preload] mindraLogs.openFolder error:", e);
+      return {
+        ok: false,
+        error: e && e.message ? e.message : String(e),
+      };
+    }
   },
 });

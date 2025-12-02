@@ -11,6 +11,10 @@
   const aiSendBtn = document.getElementById("ai-send");
   const aiInputRow = document.getElementById("ai-input-row");
 
+  // AIモード切替トグル
+  const aiWebModeToggle = document.getElementById("ai-web-mode-toggle");
+  const aiModeLabel = document.getElementById("ai-mode-label");
+
   if (
     !rightSidebarMain ||
     !aiStatusZone ||
@@ -18,7 +22,9 @@
     !aiStatusText ||
     !aiInput ||
     !aiSendBtn ||
-    !aiInputRow
+    !aiInputRow ||
+    !aiWebModeToggle ||
+    !aiModeLabel
   ) {
     console.warn("[sidebar.js] AI sidebar elements missing");
     return;
@@ -40,6 +46,60 @@
   let lastErrorMessage = "";
   let activeModelName = "";
   const messages = [];
+
+  // Webコマンドモード（自然文をそのまま runUniversalSearch に流す）
+  let autoWebMode = false;
+
+  // ===============================================
+  // AIモード（AIチャット / say限定）設定
+  // ===============================================
+  function updateAiModeLabel() {
+    if (autoWebMode) {
+      aiModeLabel.textContent = "送信モード";
+    } else {
+      aiModeLabel.textContent = "AIチャット";
+    }
+  }
+
+  function loadAiModeFromSettings() {
+    if (!window.MindraSettingsStore) {
+      autoWebMode = false;
+      return;
+    }
+    try {
+      const store = window.MindraSettingsStore;
+      const s = store.loadSettings();
+      autoWebMode = !!(s.ai && s.ai.autoWebMode);
+    } catch (e) {
+      console.warn("[sidebar.js] loadAiModeFromSettings error", e);
+      autoWebMode = false;
+    }
+  }
+
+  function saveAiModeToSettings() {
+    if (!window.MindraSettingsStore) return;
+    try {
+      const store = window.MindraSettingsStore;
+      const s = store.loadSettings();
+      if (!s.ai) s.ai = {};
+      s.ai.autoWebMode = !!autoWebMode;
+      store.saveSettings(s);
+    } catch (e) {
+      console.warn("[sidebar.js] saveAiModeToSettings error", e);
+    }
+  }
+
+  // 設定から読み込んでトグルに反映
+  loadAiModeFromSettings();
+  aiWebModeToggle.checked = autoWebMode;
+  updateAiModeLabel();
+
+  aiWebModeToggle.addEventListener("change", () => {
+    autoWebMode = !!aiWebModeToggle.checked;
+    saveAiModeToSettings();
+    updateAiModeLabel();
+    applyLayout();
+  });
 
   // ===============================================
   // 入力欄（Shift+Enter改行 + 高さ自動調整）
@@ -115,6 +175,47 @@
     appendMessage("user", text);
 
     try {
+      // まずは Webコマンドモードの判定
+      if (autoWebMode && typeof window.runUniversalSearch === "function") {
+        try {
+          const result = await window.runUniversalSearch(text);
+
+          if (!result) {
+            appendMessage("assistant", "ブラウザに指示を送ったよ。");
+            return;
+          }
+
+          if (typeof result === "string") {
+            appendMessage("assistant", result);
+            return;
+          }
+
+          if (result.message) {
+            appendMessage("assistant", result.message);
+            return;
+          }
+
+          if (result.ok) {
+            appendMessage("assistant", "処理が完了したよ。");
+            return;
+          }
+
+          appendMessage(
+            "assistant",
+            result.error || "処理結果がよくわからなかったよ。"
+          );
+          return;
+        } catch (e) {
+          console.error("autoWebMode runUniversalSearch error:", e);
+          appendMessage(
+            "assistant",
+            "Webコマンドの実行中にエラーが起きたよ。"
+          );
+          return;
+        }
+      }
+
+      // ここから下は通常モード（AIチャット + コマンド）
       if (!window.mindraDispatcher || !window.mindraDispatcher.handle) {
         console.warn("mindraDispatcher が無い or handle が無い");
         if (window.mindraAI && window.mindraAI.ask) {
@@ -199,7 +300,11 @@
     } else {
       aiInput.disabled = false;
       aiSendBtn.disabled = false;
-      aiInput.placeholder = "Shift+Enterで改行";
+      if (autoWebMode) {
+        aiInput.placeholder = "自然文でWebに指示 / 検索";
+      } else {
+        aiInput.placeholder = "Shift+Enterで改行";
+      }
     }
   }
 

@@ -7,8 +7,10 @@
   const defaultSettings = {
     general: {
       // 'cool' | 'cute' | 'simple'
-      theme: 'cool',
-      // 以下は内部用。UIではいじらないけど、互換性のため残しておく
+      theme: 'cute',
+      enableAdblock: true,   // 広告ブロック ON/OFF
+      enablePopups: false,   // ポップアップウィンドウを許可するか
+       // 以下は内部用。UIではいじらないけど、互換性のため残しておく
       restoreLayoutOnStartup: true,
       pinSidebar: true,
       pinTitlebar: true,

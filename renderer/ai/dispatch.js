@@ -1,10 +1,10 @@
-// 役割: natural-command の結果に応じて各モジュールへ振り分ける（DM層）
+// natural-command → universal-search / summarize / local-AI へ振り分ける DM 層
 
 (function () {
   async function handle(text) {
     const rawText = (text || "").toString();
 
-    // natural-command がいる前提で NLU
+    // NLU
     const cmd =
       window.mindraNaturalCommand && window.mindraNaturalCommand.parse
         ? window.mindraNaturalCommand.parse(rawText)
@@ -23,51 +23,34 @@
           if (res && res.ok !== false) {
             return (res.summary || res.text || "").toString();
           }
-          return "要約できませんでした。";
+          return "要約できなかった。";
         }
-        return "要約機能が利用できません。";
+        return "要約機能が使えないよ。";
       }
 
-      // ===== 検索 (search / search:) =====
-      if (cmd.type === "search") {
-        const q = (cmd.query || cmd.raw || rawText || "").toString().trim();
-        if (!q) {
-          return "検索キーワードが見つからなかったよ。";
-        }
+      // ===== Web（search/say）=====
+      if (cmd.type === "web") {
+        const payload = (cmd.text || cmd.raw || rawText).toString().trim();
+        if (!payload) return "内容が空だよ。";
 
         if (typeof window.runUniversalSearch === "function") {
-          return window.runUniversalSearch(q, { action: "search" });
+          // action を渡さず auto → URL で自動判別
+          return window.runUniversalSearch(payload);
         }
-        return "検索機能が利用できません。";
+        return "Web 操作が使えない。";
       }
 
-      // ===== say =====
-      // → ブラウザ内の ChatGPT / Perplexity / Kimi などにメッセージを送る
-      if (cmd.type === "say") {
-        const msg = (cmd.message || cmd.raw || rawText || "").toString().trim();
-        if (!msg) {
-          return "送るメッセージが空だったよ。";
-        }
-
-        if (typeof window.runUniversalSearch === "function") {
-          return window.runUniversalSearch(msg, { action: "chat" });
-        }
-        return "チャット入力機能が利用できません。";
-      }
-
-      // ===== fallback: 普通のローカルチャット =====
+      // ===== ローカルAI =====
       if (window.mindraAI && typeof window.mindraAI.ask === "function") {
         const aiRes = await window.mindraAI.ask(rawText, []);
-        if (!aiRes || !aiRes.ok) {
-          return "AI からの応答が得られなかったよ。";
-        }
+        if (!aiRes || !aiRes.ok) return "AI の応答がなかった。";
         return (aiRes.message || aiRes.text || "").toString();
       }
 
-      return "チャット機能が使えなかったよ。";
+      return "チャット機能が使えなかった。";
     } catch (err) {
       console.error("DISPATCH ERROR:", err);
-      return "処理中にエラーが発生したよ。";
+      return "処理中にエラーが起きた。";
     }
   }
 

@@ -23,9 +23,7 @@ let statusCache = null;
 function ensureStatusFilePath() {
   if (!statusFilePath) {
     const userData = app.getPath("userData");
-    console.log("[ai-ollama] userData =", userData);
     statusFilePath = path.join(userData, "ai-model-status.json");
-    console.log("[ai-ollama] statusFilePath =", statusFilePath);
   }
   return statusFilePath;
 }
@@ -58,7 +56,6 @@ async function writeStatus(patch) {
   statusCache = next;
   await fsp.mkdir(path.dirname(file), { recursive: true });
   await fsp.writeFile(file, JSON.stringify(next, null, 2), "utf8");
-  console.log("[ai-ollama] status written:", next);
   return next;
 }
 
@@ -261,8 +258,6 @@ async function chatInternal(message, history = []) {
 // IPC 初期化
 // ---------------------------------------------
 function initAIBackend(ipcMain) {
-  console.log("[ai-ollama] initAIBackend (default model =", OLLAMA_MODEL, ")");
-
   ipcMain.handle("mindra-ai:get-status", async () => {
     try {
       const st = await readStatus();
@@ -297,7 +292,6 @@ function initAIBackend(ipcMain) {
         lastErrorType: null,
       });
 
-      console.log("[ai-ollama] model changed via IPC to", name);
       return { ok: true, status: st };
     } catch (err) {
       console.error("[ai-ollama] set-model error:", err);

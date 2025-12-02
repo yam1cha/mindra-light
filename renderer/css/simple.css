@@ -274,3 +274,45 @@ html[data-theme="simple"] #settings-panel {
   border: 1px solid rgba(0, 0, 0, 0.10);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
 }
+
+/* --- 共通 --- */
+html[data-theme="simple"] .settings-button {
+  background: #ffffff;
+  color: #333333;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: 0.1s ease;
+}
+
+html[data-theme="simple"] .settings-button:hover {
+  background: #f3f3ff;
+}
+
+html[data-theme="simple"] .settings-button:active {
+  transform: translateY(1px);
+}
+
+/* セレクトボックス */
+html[data-theme="simple"] .settings-select,
+html[data-theme="simple"] select {
+  background: #ffffff;
+  color: #333333;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+/* 入力欄 */
+html[data-theme="simple"] .settings-inline input {
+  background: #ffffff;
+  color: #222222;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+html[data-theme="simple"] .settings-inline button {
+  margin-left: 6px;
+}

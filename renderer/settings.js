@@ -18,13 +18,11 @@
         ? options.onSettingsChanged
         : null;
 
+    // 2カラムレイアウト用スタイルを注入
+    injectLayoutStylesOnce();
+
     rootEl.innerHTML = `
       <div class="settings-container">
-        <div class="settings-tabs">
-          <button class="settings-tab is-active" data-tab="general">一般</button>
-          <button class="settings-tab" data-tab="llm">LLM</button>
-        </div>
-
         <div class="settings-panels">
           <!-- 一般 -->
           <section class="settings-panel" data-panel="general">
@@ -32,21 +30,83 @@
 
             <div class="settings-group">
               <label for="setting-theme">テーマ</label>
-              <select id="setting-theme">
+              <select id="setting-theme" class="settings-select">
                 <option value="simple">シンプル</option>
                 <option value="cool">クール</option>
                 <option value="cute">キュート</option>
               </select>
             </div>
+
+            <div class="settings-group">
+              <label>
+                <input type="checkbox" id="setting-enable-adblock" />
+                広告ブロックを有効にする
+              </label>
+              <p class="settings-help">
+                EasyList などのルールを使って広告をブロックするよ。
+              </p>
+            </div>
+
+            <div class="settings-group">
+              <label>
+                <input type="checkbox" id="setting-enable-popups" />
+                ポップアップウィンドウを許可する
+              </label>
+              <p class="settings-help">
+                オフにするとポップアップは開かず、新しいタブとして開くようにするよ。
+              </p>
+            </div>
+
+            <!-- プロファイル一覧 & 削除 -->
+            <div class="settings-group">
+              <label class="settings-label">プロファイル一覧</label>
+              <div class="settings-row">
+                <select id="setting-profile-list" class="settings-select">
+                  <!-- JS から埋める -->
+                </select>
+                <button id="setting-profile-delete" class="settings-button">
+                  選択したプロファイルを削除
+                </button>
+              </div>
+              <p class="settings-help">
+                デフォルトの <code>profile-1</code> は削除できないよ。
+              </p>
+            </div>
+
+            <div class="settings-group">
+              <label class="settings-label">プロファイル</label>
+              <div class="settings-row">
+                <button id="setting-add-profile-shortcut" class="settings-button">
+                  プロファイルの追加
+                </button>
+              </div>
+              <p class="settings-help">
+                デスクトップに新しいプロファイル用ショートカットを作るよ。
+              </p>
+            </div>
+
+            <!-- 障害ログフォルダを開く -->
+            <div class="settings-group">
+              <label class="settings-label">ログ</label>
+              <div class="settings-row">
+                <button id="setting-open-logs" class="settings-button">
+                  障害ログフォルダを開く
+                </button>
+              </div>
+              <p class="settings-help">
+                障害が起きたときのログファイルが入っているフォルダを開くよ。
+              </p>
+            </div>
           </section>
 
           <!-- LLM（Ollama 専用） -->
-          <section class="settings-panel is-hidden" data-panel="llm">
+          <!-- is-hidden を削除して常に右側に表示 -->
+          <section class="settings-panel" data-panel="llm">
             <h2>LLM（Ollama）</h2>
 
             <div class="settings-group">
               <label for="setting-llm-model-select">接続できたモデル</label>
-              <select id="setting-llm-model-select"></select>
+              <select id="setting-llm-model-select" class="settings-select"></select>
               <p class="settings-help">
                 過去に設定して接続できたモデルから選べます。
                 変更すると設定画面が閉じて、右側のAIサイドバーで自動的に確認が始まるよ。
@@ -61,7 +121,9 @@
                   id="setting-llm-new-model"
                   placeholder="例: llama3:8b など"
                 />
-                <button id="setting-llm-add-model">追加して使う</button>
+                <button id="setting-llm-add-model" class="settings-button">
+                  追加して使う
+                </button>
               </div>
               <p class="settings-help">
                 ボタンを押すと右側のAIサイドバーで自動的に確認が始まるよ。
@@ -72,13 +134,49 @@
       </div>
     `;
 
-    wireTabs(rootEl);
+    wireTabs(rootEl);          // .settings-tab が無ければ何もしない
     bindGeneralTab(rootEl);
     bindLlmTab(rootEl);
     applySettingsToUI(rootEl);
   }
 
-  // タブ切り替え
+  // 2カラムレイアウト用スタイル
+  function injectLayoutStylesOnce() {
+    const id = "mindra-settings-layout-style";
+    if (document.getElementById(id)) return;
+
+    const style = document.createElement("style");
+    style.id = id;
+    style.textContent = `
+      #settings-panel {
+        max-width: 900px !important;
+        width: 900px !important;
+      }
+      .settings-container {
+        padding: 12px 16px;
+      }
+      /* 左：一般 / 右：LLM の2カラム */
+      .settings-panels {
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+        min-width: 720px;
+        gap: 24px !important;
+      }
+      .settings-panel {
+        flex: 1 1 0;
+        min-width: 340px;
+      }
+      @media (max-width: 720px) {
+        .settings-panels {
+          flex-direction: column;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // タブ切り替え（今の HTML には .settings-tab が無いので実質何もしない）
   function wireTabs(rootEl) {
     const tabButtons = rootEl.querySelectorAll(".settings-tab");
     const panels = rootEl.querySelectorAll(".settings-panel");
@@ -100,22 +198,222 @@
     });
   }
 
-  // 一般タブ（テーマだけ）
+  // 一般タブ（テーマ + 広告ブロック + ポップアップ + ログ + プロファイル）
   function bindGeneralTab(rootEl) {
     const themeSel = rootEl.querySelector("#setting-theme");
+    const adblockChk = rootEl.querySelector("#setting-enable-adblock");
+    const popupChk = rootEl.querySelector("#setting-enable-popups");
+    const openLogsBtn = rootEl.querySelector("#setting-open-logs");
+    const addProfileBtn = rootEl.querySelector(
+      "#setting-add-profile-shortcut"
+    );
+    const profileListSel = rootEl.querySelector("#setting-profile-list");
+    const profileDeleteBtn = rootEl.querySelector("#setting-profile-delete");
 
-    themeSel.addEventListener("change", () => {
-      const themeId = themeSel.value;
+    // 安全ガード
+    if (!settings || !settings.general) {
+      settings = settings || {};
+      settings.general = settings.general || {};
+    }
 
-      settings.general.theme = themeId;
-      notifySettingsChanged();
+    // 初期値反映
+    if (adblockChk) {
+      adblockChk.checked = !!settings.general.enableAdblock;
+    }
+    if (popupChk) {
+      popupChk.checked = !!settings.general.enablePopups;
+    }
 
-      if (window.mindraTheme && typeof window.mindraTheme.setTheme === "function") {
-        window.mindraTheme.setTheme(themeId);
-      } else {
-        document.documentElement.setAttribute("data-theme", themeId);
+    // テーマ変更
+    if (themeSel) {
+      themeSel.addEventListener("change", () => {
+        const themeId = themeSel.value;
+
+        settings.general.theme = themeId;
+        notifySettingsChanged();
+
+        if (window.mindraTheme && typeof window.mindraTheme.setTheme === "function") {
+          window.mindraTheme.setTheme(themeId);
+        } else {
+          document.documentElement.setAttribute("data-theme", themeId);
+        }
+      });
+    }
+
+    // 広告ブロック ON/OFF
+    if (adblockChk) {
+      adblockChk.addEventListener("change", () => {
+        settings.general.enableAdblock = adblockChk.checked;
+        notifySettingsChanged();
+
+        if (window.mindraSettingsBridge && window.mindraSettingsBridge.updateGeneralFlags) {
+          window.mindraSettingsBridge.updateGeneralFlags({
+            enableAdblock: settings.general.enableAdblock,
+          });
+        }
+      });
+    }
+
+    // ポップアップ ON/OFF
+    if (popupChk) {
+      popupChk.addEventListener("change", () => {
+        settings.general.enablePopups = popupChk.checked;
+        notifySettingsChanged();
+
+        if (window.mindraSettingsBridge && window.mindraSettingsBridge.updateGeneralFlags) {
+          window.mindraSettingsBridge.updateGeneralFlags({
+            enablePopups: settings.general.enablePopups,
+          });
+        }
+      });
+    }
+
+    // 障害ログフォルダを開く
+    if (openLogsBtn) {
+      openLogsBtn.addEventListener("click", async () => {
+        if (
+          !window.mindraLogs ||
+          typeof window.mindraLogs.openFolder !== "function"
+        ) {
+          alert("ごめん…ログフォルダを開く機能がまだ有効になってないみたい。");
+          return;
+        }
+        try {
+          const res = await window.mindraLogs.openFolder();
+          if (!res || !res.ok) {
+            const msg = (res && res.error) || "ログフォルダを開けなかったよ…。";
+            console.error("[settings] open logs folder error:", msg);
+            alert("ログフォルダを開けなかったよ…\n" + msg);
+          }
+        } catch (e) {
+          console.error("[settings] openLogsBtn click error:", e);
+          alert("ログフォルダを開く途中でエラーが出ちゃった…。");
+        }
+      });
+    }
+
+    // プロファイルショートカット追加
+    if (addProfileBtn) {
+      addProfileBtn.addEventListener("click", async () => {
+        if (
+          !window.mindraSettingsBridge ||
+          typeof window.mindraSettingsBridge.createProfileShortcut !== "function"
+        ) {
+          console.error("mindraSettingsBridge.createProfileShortcut が見つからないよ");
+          alert("ごめん…ショートカット機能がまだ有効になってないみたい。");
+          return;
+        }
+
+        try {
+          const result = await window.mindraSettingsBridge.createProfileShortcut();
+          if (result && result.ok) {
+            alert(
+              `プロファイル「${result.profileId}」のショートカットを作ったよ！\n` +
+              `${result.shortcutPath}`
+            );
+            // 一覧を更新
+            await reloadProfileList();
+          } else {
+            console.error("profile:create-shortcut failed:", result);
+            alert("ショートカットの作成に失敗しちゃった…。");
+          }
+        } catch (e) {
+          console.error(e);
+          alert("ショートカットの作成中にエラーが出ちゃった…。");
+        }
+      });
+    }
+
+    // プロファイル一覧の読み込み
+    async function reloadProfileList() {
+      if (!profileListSel) return;
+
+      // デフォルト profile-1 を先頭に固定で入れる
+      const options = [];
+
+      options.push({
+        id: "profile-1",
+        label: "profile-1 (デフォルト)",
+        deletable: false,
+      });
+
+      if (
+        window.mindraSettingsBridge &&
+        typeof window.mindraSettingsBridge.listProfiles === "function"
+      ) {
+        try {
+          const res = await window.mindraSettingsBridge.listProfiles();
+          if (res && res.ok && Array.isArray(res.profiles)) {
+            res.profiles.forEach((p) => {
+              if (!p || !p.id) return;
+              options.push({
+                id: p.id,
+                label: p.exists
+                  ? `${p.id}（ショートカットあり）`
+                  : `${p.id}（ショートカット見つからず）`,
+                deletable: true,
+              });
+            });
+          }
+        } catch (e) {
+          console.error("profile:list error", e);
+        }
       }
-    });
+
+      profileListSel.innerHTML = "";
+      options.forEach((opt) => {
+        const o = document.createElement("option");
+        o.value = opt.id;
+        o.textContent = opt.label;
+        profileListSel.appendChild(o);
+      });
+    }
+
+    // プロファイル削除
+    if (profileDeleteBtn) {
+      profileDeleteBtn.addEventListener("click", async () => {
+        if (!profileListSel) return;
+        const profileId = profileListSel.value;
+
+        if (!profileId) return;
+
+        if (profileId === "profile-1") {
+          alert("デフォルトの profile-1 は削除できないよ。");
+          return;
+        }
+
+        if (
+          !window.mindraSettingsBridge ||
+          typeof window.mindraSettingsBridge.deleteProfile !== "function"
+        ) {
+          alert("ごめん…プロファイル削除の機能がまだ有効になってないみたい。");
+          return;
+        }
+
+        const ok = confirm(
+          `本当に「${profileId}」を削除する？\n` +
+            "このプロファイルのショートカットとログイン情報が消えるよ。"
+        );
+        if (!ok) return;
+
+        try {
+          const res = await window.mindraSettingsBridge.deleteProfile(profileId);
+          if (res && res.ok) {
+            alert(`「${profileId}」を削除したよ。`);
+            await reloadProfileList();
+          } else {
+            console.error("profile:delete failed", res);
+            alert("プロファイルの削除に失敗しちゃった…。");
+          }
+        } catch (e) {
+          console.error(e);
+          alert("プロファイル削除中にエラーが出ちゃった…。");
+        }
+      });
+    }
+
+    // 起動時に一覧を読み込み
+    reloadProfileList();
   }
 
   // LLMタブ（モデル履歴 + 新規追加）
@@ -127,57 +425,48 @@
     if (!settings.llm) settings.llm = {};
 
     // 履歴から選択 → モデル切り替え + 設定画面を閉じて LLM チェック
-    modelSelect.addEventListener("change", () => {
-      const value = modelSelect.value.trim();
-      if (!value) return;
+    if (modelSelect) {
+      modelSelect.addEventListener("change", () => {
+        const value = modelSelect.value.trim();
+        if (!value) return;
 
-      // 設定・保存・バックエンド反映
-      applyNewModel(rootEl, value);
+        applyNewModel(rootEl, value);
 
-      // 設定画面を閉じる
-      if (typeof closeSettingsPanel === "function") {
-        closeSettingsPanel();
-      }
-
-      // 右サイドバーを開く
-      if (typeof setRightSidebar === "function") {
-        setRightSidebar(true);
-      }
-
-      // 右サイドバー側で状態チェックを開始
-      if (window.mindraRunStatusCheck) {
-        window.mindraRunStatusCheck();
-      }
-    });
+        if (typeof closeSettingsPanel === "function") {
+          closeSettingsPanel();
+        }
+        if (typeof setRightSidebar === "function") {
+          setRightSidebar(true);
+        }
+        if (window.mindraRunStatusCheck) {
+          window.mindraRunStatusCheck();
+        }
+      });
+    }
 
     // 新しいモデルを追加して使う
-    addModelBtn.addEventListener("click", () => {
-      const value = (newModelInput.value || "").trim();
-      if (!value) return;
+    if (addModelBtn) {
+      addModelBtn.addEventListener("click", () => {
+        const value = (newModelInput.value || "").trim();
+        if (!value) return;
 
-      // まずバックエンドにモデル名を伝える
-      if (window.mindraAI && typeof window.mindraAI.setModel === "function") {
-        window.mindraAI.setModel(value);
-      }
+        if (window.mindraAI && typeof window.mindraAI.setModel === "function") {
+          window.mindraAI.setModel(value);
+        }
 
-      // 入力欄リセット
-      newModelInput.value = "";
+        newModelInput.value = "";
 
-      // 設定画面を閉じる
-      if (typeof closeSettingsPanel === "function") {
-        closeSettingsPanel();
-      }
-
-      // 右サイドバーを強制的に開く
-      if (typeof setRightSidebar === "function") {
-        setRightSidebar(true);
-      }
-
-      // 右サイドバー側で状態チェックを開始
-      if (window.mindraRunStatusCheck) {
-        window.mindraRunStatusCheck();
-      }
-    });
+        if (typeof closeSettingsPanel === "function") {
+          closeSettingsPanel();
+        }
+        if (typeof setRightSidebar === "function") {
+          setRightSidebar(true);
+        }
+        if (window.mindraRunStatusCheck) {
+          window.mindraRunStatusCheck();
+        }
+      });
+    }
   }
 
   // モデルを設定 & 履歴に反映（履歴から選んだとき用）
@@ -245,8 +534,9 @@
     if (!settings) return;
 
     // テーマ
-    const themeId = settings.general.theme || "simple";
-    rootEl.querySelector("#setting-theme").value = themeId;
+    const themeId = (settings.general && settings.general.theme) || "simple";
+    const themeSel = rootEl.querySelector("#setting-theme");
+    if (themeSel) themeSel.value = themeId;
 
     if (window.mindraTheme && typeof window.mindraTheme.setTheme === "function") {
       window.mindraTheme.setTheme(themeId);
@@ -262,6 +552,20 @@
     if (modelName && window.mindraAI && typeof window.mindraAI.setModel === "function") {
       window.mindraAI.setModel(modelName);
     }
+
+    // 一般設定フラグも main に同期
+    if (window.mindraSettingsBridge && window.mindraSettingsBridge.updateGeneralFlags) {
+      window.mindraSettingsBridge.updateGeneralFlags({
+        enableAdblock: !!(settings.general && settings.general.enableAdblock),
+        enablePopups: !!(settings.general && settings.general.enablePopups),
+      });
+    }
+
+    // チェックボックス側にも反映（再オープン時用）
+    const adblockChk = rootEl.querySelector("#setting-enable-adblock");
+    const popupChk = rootEl.querySelector("#setting-enable-popups");
+    if (adblockChk) adblockChk.checked = !!(settings.general && settings.general.enableAdblock);
+    if (popupChk) popupChk.checked = !!(settings.general && settings.general.enablePopups);
   }
 
   // 設定保存 + コールバック

@@ -5,75 +5,51 @@
     return (text || "").replace(/\s+/g, "").toLowerCase();
   }
 
-  // ===== 検索クエリの抽出 =====
-  function extractSearchQuery(text) {
+  // 検索パターン用
+  function extractSearchLike(text) {
     if (!text) return "";
-
     let q = text;
-
-    // 末尾の「検索して」系を削る
-    q = q.replace(
-      /(を)?(検索して?|検索)\s*$/gi,
-      ""
-    );
-
+    q = q.replace(/(を)?(検索して?|検索)\s*$/gi, "");
+    q = q.replace(/(を)?(調べて|調査して)\s*$/gi, "");
     return q.trim();
   }
 
-  // ===== say（旧 web_chat）用メッセージの抽出 =====
-  function extractSayMessage(text) {
+  // 「◯◯って言って」系
+  function extractSayLike(text) {
     if (!text) return "";
-
     let msg = text;
-
-    // 末尾の「〜って◯◯」を削る
-    msg = msg.replace(
-      /(って送って|って送信して|って伝えて|って言って|と言って|っておくって)\s*$/g,
-      ""
-    );
-
+    msg = msg.replace(/(って送って|って送信して|って伝えて|って言って|と言って)\s*$/gi, "");
     return msg.trim();
   }
 
-  function parse(text) {
-    const raw = text || "";
-    const trimmed = raw.trim();
+  function parse(raw) {
+    const trimmed = (raw || "").toString().trim();
+    if (!trimmed) return { type: "chat", raw: "" };
     const n = normalize(trimmed);
 
     // -------------------------
-    // プレフィックス系（生コマンド）
+    // プレフィックスコマンド
     // -------------------------
 
-    // search:◯◯
     if (/^search:/i.test(trimmed)) {
       const q = trimmed.replace(/^search:/i, "").trim();
-      return {
-        type: "search",
-        raw,
-        query: q,
-      };
+      return { type: "web", raw, text: q };
     }
 
-    // say:◯◯
     if (/^say:/i.test(trimmed)) {
       const msg = trimmed.replace(/^say:/i, "").trim();
-      return {
-        type: "say",
-        raw,
-        message: msg,
-      };
+      return { type: "web", raw, text: msg };
     }
 
     // -------------------------
     // 日本語自然文コマンド
     // -------------------------
 
-    // ===== 要約 =====
+    // 要約
     if (
       n === "要約" ||
       n === "要約して" ||
       n.endsWith("を要約して") ||
-      n.endsWith("要約して") ||
       n.endsWith("要約") ||
       n.includes("ページ要約") ||
       n.includes("本文要約") ||
@@ -82,40 +58,36 @@
       return { type: "summarize", raw };
     }
 
-    // ===== say（ブラウザ側に「こう言って」と送る）=====
+    // say 系
     if (
-      n.endsWith("っておくって") ||
-      n.endsWith("っておくれ") ||
       n.endsWith("って送って") ||
       n.endsWith("って送信して") ||
       n.endsWith("って伝えて") ||
       n.endsWith("って言って") ||
-      n.endsWith("と言って") ||
-      /.+って伝えて$/.test(n) ||
-      /.+って言って$/.test(n)
+      n.endsWith("と言って")
     ) {
       return {
-        type: "say",
+        type: "web",
         raw,
-        message: extractSayMessage(raw),
+        text: extractSayLike(raw),
       };
     }
 
-    // ===== 検索 =====
+    // search 系
     if (
       n.includes("検索して") ||
       n.includes("を検索") ||
       /.+を検索$/.test(n) ||
-      /.+検索して$/.test(n) 
+      /.+検索して$/.test(n)
     ) {
       return {
-        type: "search",
+        type: "web",
         raw,
-        query: extractSearchQuery(raw),
+        text: extractSearchLike(raw),
       };
     }
 
-    // ===== fallback: 通常チャット =====
+    // fallback: 普通のチャット
     return { type: "chat", raw };
   }
 

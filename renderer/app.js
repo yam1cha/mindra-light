@@ -1,3 +1,40 @@
+// ===== MindraLight renderer 障害ログ（global handlers） =====
+window.addEventListener("error", (event) => {
+  try {
+    const info = {
+      message: event && event.message,
+      source: event && event.filename,
+      lineno: event && event.lineno,
+      colno: event && event.colno,
+    };
+    if (event && event.error && event.error.stack) {
+      info.stack = event.error.stack;
+    }
+    console.error("[renderer-error]", info);
+  } catch (e) {
+    console.error("[renderer-error-handler-failed]", e);
+  }
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  try {
+    const reason = event && event.reason;
+    let info;
+    if (reason && typeof reason === "object") {
+      info = {
+        message: reason.message,
+        stack: reason.stack,
+        name: reason.name,
+      };
+    } else {
+      info = { reason: String(reason) };
+    }
+    console.error("[renderer-unhandledrejection]", info);
+  } catch (e) {
+    console.error("[renderer-unhandledrejection-handler-failed]", e);
+  }
+});
+
 const CONFIG = window.config || {};
 const rootEl = document.getElementById("root");
 const splitOverlayEl = document.getElementById("split-overlay");
@@ -25,7 +62,7 @@ const settingsRoot = document.getElementById("settings-root");
 const LEFT_SIDEBAR_WIDTH = 240;
 const RIGHT_SIDEBAR_WIDTH = 240;
 
-// ★ SplitView 用のオーバーレイ要素を window にも公開しておく
+// SplitView 用のオーバーレイ要素を window にも公開しておく
 window.splitOverlayEl = splitOverlayEl;
 window.splitOverlayIndicator = splitOverlayIndicator;
 
@@ -38,9 +75,9 @@ function setupSplitDivider() {
 
 if (newTabBtn) {
   newTabBtn.onclick = () => {
-    // ★ SplitView中なら、一旦抜ける（レイアウトは保持）
+    // SplitView中なら、一旦抜ける（レイアウトは保持）
     exitSplitViewPreserveLayout();
-    // ★ボタンの見た目も同期
+    // ボタンの見た目も同期
     updateSplitViewButtonStyle();
 
     // 通常モードとして新しいタブを開く
@@ -61,6 +98,9 @@ let currentTabId = null;
 let nextTabId = 1;
 let activeWebviewId = null;
 let nextWebviewId = 1;
+
+// タブ履歴の上限
+const MAX_TAB_HISTORY_ENTRIES = 500;
 
 let sidebarOpen = true;       // 左サイドバー
 let sidebarShrinkMode = true; // 左サイドバー押し出しモード
@@ -103,6 +143,53 @@ const profileColors = {
 
 const TABS_STATE_KEY = (CONFIG.SAVE_KEY_PREFIX || "") + "mindraLightTabsState";
 
+// ===== タブ履歴ヘルパー =====
+
+function ensureTabHistoryFields(tab) {
+  if (!Array.isArray(tab.historyEntries)) {
+    tab.historyEntries = [];
+  }
+  if (typeof tab.historyIndex !== "number") {
+    tab.historyIndex =
+      tab.historyEntries.length > 0 ? tab.historyEntries.length - 1 : -1;
+  }
+}
+
+function addHistoryEntry(tab, url) {
+  ensureTabHistoryFields(tab);
+  const title = deriveTitleFromUrl(url);
+
+  // 未来側が残っていたら切り捨て（ブランチ）
+  if (
+    tab.historyIndex >= 0 &&
+    tab.historyIndex < tab.historyEntries.length - 1
+  ) {
+    tab.historyEntries = tab.historyEntries.slice(0, tab.historyIndex + 1);
+  }
+
+  const last = tab.historyEntries[tab.historyEntries.length - 1];
+  if (last && last.url === url) {
+    // 同じURLなら上書きだけ
+    last.title = title;
+    last.ts = Date.now();
+    tab.historyIndex = tab.historyEntries.length - 1;
+    return;
+  }
+
+  tab.historyEntries.push({
+    url,
+    title,
+    ts: Date.now(),
+  });
+
+  if (tab.historyEntries.length > MAX_TAB_HISTORY_ENTRIES) {
+    const diff = tab.historyEntries.length - MAX_TAB_HISTORY_ENTRIES;
+    tab.historyEntries.splice(0, diff);
+  }
+
+  tab.historyIndex = tab.historyEntries.length - 1;
+}
+
 function serializeTabsState() {
   const currentIndex = tabs.findIndex((t) => t.id === currentTabId);
 
@@ -110,6 +197,10 @@ function serializeTabsState() {
     tabs: tabs.map((t) => ({
       url: t.url,
       profileId: t.profileId || 1,
+      // タブごとの履歴も保存
+      historyEntries: Array.isArray(t.historyEntries) ? t.historyEntries : [],
+      historyIndex:
+        typeof t.historyIndex === "number" ? t.historyIndex : -1,
     })),
     currentTabIndex: currentIndex < 0 ? 0 : currentIndex,
     split: serializeSplitStateForTabs(tabs, currentTabId),
@@ -151,13 +242,52 @@ function loadTabsState() {
     // タブ復元
     storedTabs.forEach((t) => {
       const id = nextTabId++;
-      const url = t.url || "https://www.google.com";
+
+      // URL の初期値
+      let url = t.url || "https://www.google.com";
+
+      // 履歴の復元（なければURL1件だけの履歴を作る）
+      let historyEntries = Array.isArray(t.historyEntries)
+        ? t.historyEntries
+        : null;
+      let historyIndex =
+        typeof t.historyIndex === "number" ? t.historyIndex : null;
+
+      if (!historyEntries || historyEntries.length === 0) {
+        const title0 = deriveTitleFromUrl(url);
+        historyEntries = [
+          {
+            url,
+            title: title0,
+            ts: Date.now(),
+          },
+        ];
+        historyIndex = 0;
+      } else {
+        if (
+          historyIndex == null ||
+          historyIndex < 0 ||
+          historyIndex >= historyEntries.length
+        ) {
+          historyIndex = historyEntries.length - 1;
+        }
+        const entry = historyEntries[historyIndex];
+        if (entry && entry.url) {
+          url = entry.url;
+        }
+      }
+
+      const title = deriveTitleFromUrl(url);
+
       tabs.push({
         id,
         url,
-        title: deriveTitleFromUrl(url),
+        title,
         profileId: t.profileId || 1,
         webviewId: null,
+        historyEntries,
+        historyIndex,
+        _suppressNextHistory: false,
       });
     });
 
@@ -173,7 +303,7 @@ function loadTabsState() {
       sidebarOpen = sb.open === 1;
       sidebarShrinkMode = sb.shrink === 1;
       rightSidebarOpen = sb.rightOpen === 1;
-      // ★ 既存データにはない場合もあるので、未定義なら true（固定）にする
+      // 既存データにはない場合もあるので、未定義なら true（固定）にする
       if (sb.titleFixed === undefined) {
         titlebarFixedMode = true;
       } else {
@@ -197,7 +327,7 @@ function loadTabsState() {
     // AI サイドバーも反映
     setRightSidebar(rightSidebarOpen);
 
-    // ★ タイトルバーの幅と表示状態をモードに合わせて復元
+    // タイトルバーの幅と表示状態をモードに合わせて復元
     updateTitlebarWidth();
     if (titlebarFixedMode) {
       titlebar.classList.add("visible");
@@ -221,7 +351,7 @@ function loadTabsState() {
     // 起動時にアクティブにするタブ：
     setActiveTab(initialActiveId);
 
-    // ★ サイドバーのモードボタンの色を復元状態に合わせてセット
+    // サイドバーのモードボタンの色を復元状態に合わせてセット
     updateSidebarModeButtonStyle();
     updateTitlebarModeButtonStyle();
     updateSplitViewButtonStyle();
@@ -272,10 +402,10 @@ if (btnToggleTitlebarMode) {
     // ボタンの色を更新
     updateTitlebarModeButtonStyle();
 
-    // ★ タイトルバーの左右幅を更新（サイドバー/AIバーとの間に合わせる）
+    // タイトルバーの左右幅を更新（サイドバー/AIバーとの間に合わせる）
     updateTitlebarWidth();
 
-    // ★ 一番大事：レイアウトを再計算して view を押し出しし直す
+    // レイアウトを再計算して view を押し出しし直す
     applyCurrentLayout();
 
     // 状態を保存
@@ -327,7 +457,7 @@ function setRightSidebar(open) {
 
   // レイアウトとタイトルバー幅更新
   applyCurrentLayout();
-  updateTitlebarWidth();  // もともと呼んでいた関数名そのまま
+  updateTitlebarWidth();
 }
 
 // Split View ボタンの見た目
@@ -386,25 +516,28 @@ function updateTitlebarWidth() {
   const hoverZone = document.getElementById("top-hover-zone");
   if (!titlebar || !hoverZone) return;
 
-  // 左側：タイトルバー固定モード中に「サイドバーが開いているとき」は、その分ずらす
   let leftOffset = 0;
-  if (titlebarFixedMode && sidebarOpen && sidebar) {
+
+  // 左サイドバーが見えている時は、固定/ホバーどちらでもタイトルバーを短くする
+  if (sidebarOpen && sidebar) {
     const sbRect = sidebar.getBoundingClientRect();
     const leftWidth = sbRect.width || sidebar.offsetWidth || LEFT_SIDEBAR_WIDTH;
+
+    // 押し出し固定（shrinkMode=true）のとき → 押し出し量としても使われる
+    // ホバー（shrinkMode=false）のとき → タイトルバーだけ短くする
     leftOffset = leftWidth;
   }
 
-  // 右側：AIサイドバーが開いているときだけ、その分を引く
+  // 右側：AIサイドバーが開いているときだけ、その分を削る
   let rightOffset = 0;
   if (rightSidebarOpen) {
     rightOffset = RIGHT_SIDEBAR_WIDTH;
   }
 
-  // タイトルバーの表示範囲を「サイドバーの間」だけにする
+  // タイトルバーとホバーゾーンに反映
   titlebar.style.left = leftOffset + "px";
   titlebar.style.right = rightOffset + "px";
 
-  // ホバーゾーンも同じ幅にしておく
   hoverZone.style.left = leftOffset + "px";
   hoverZone.style.right = rightOffset + "px";
 }
@@ -483,7 +616,7 @@ function syncSidebarUrlInput() {
   const input = document.getElementById("sidebar-url-input");
   if (!input) return;
 
-  // ★ SplitView 中は常に空欄にする（有効/無効は別関数で制御）
+  // SplitView 中は常に空欄にする（有効/無効は別関数で制御）
   if (splitCanvasMode) {
     input.value = "";
     return;
@@ -512,7 +645,8 @@ function renderTabs() {
 
     const dot = document.createElement("span");
     dot.className = "tab-profile-dot";
-    const pid = tab.profileId && profileColors[tab.profileId] ? tab.profileId : 1;
+    const pid =
+      tab.profileId && profileColors[tab.profileId] ? tab.profileId : 1;
     dot.style.backgroundColor = profileColors[pid];
 
     const titleSpan = document.createElement("span");
@@ -554,10 +688,10 @@ function renderTabs() {
 
       setSplitOverlayActive(false);
 
-      // ★ SplitView から通常表示に戻る処理はヘルパーにまとめる
+      // SplitView から通常表示に戻る処理はヘルパーにまとめる
       exitSplitViewPreserveLayout();
 
-      // ★ボタンの見た目も更新
+      // ボタンの見た目も更新
       updateSplitViewButtonStyle();
 
       // 通常タブとして表示
@@ -595,28 +729,39 @@ function attachWebviewEvents(wv, tabId) {
     }
   });
 
-  wv.addEventListener("did-navigate", (e) => {
-    if (shouldIgnoreNavigationUrl(e.url)) return;
+  function handleNavigation(url) {
+    if (shouldIgnoreNavigationUrl(url)) return;
 
     const tab = tabs.find((t) => t.id === tabId);
     if (!tab) return;
-    tab.url = e.url;
-    tab.title = deriveTitleFromUrl(e.url);
+
+    // 戻る／進むなど、履歴移動で発生したナビゲーションは履歴を追加しない
+    if (tab._suppressNextHistory) {
+      tab._suppressNextHistory = false;
+      tab.url = url;
+      tab.title = deriveTitleFromUrl(url);
+      if (tab.id === currentTabId) syncSidebarUrlInput();
+      renderTabs();
+      saveTabsState();
+      return;
+    }
+
+    // 通常ナビゲーション → 履歴に積む
+    addHistoryEntry(tab, url);
+
+    tab.url = url;
+    tab.title = deriveTitleFromUrl(url);
     if (tab.id === currentTabId) syncSidebarUrlInput();
     renderTabs();
     saveTabsState();
+  }
+
+  wv.addEventListener("did-navigate", (e) => {
+    handleNavigation(e.url);
   });
 
   wv.addEventListener("did-navigate-in-page", (e) => {
-    if (shouldIgnoreNavigationUrl(e.url)) return;
-
-    const tab = tabs.find((t) => t.id === tabId);
-    if (!tab) return;
-    tab.url = e.url;
-    tab.title = deriveTitleFromUrl(e.url);
-    if (tab.id === currentTabId) syncSidebarUrlInput();
-    renderTabs();
-    saveTabsState();
+    handleNavigation(e.url);
   });
 
   wv.addEventListener("found-in-page", (e) => {
@@ -626,7 +771,7 @@ function attachWebviewEvents(wv, tabId) {
   // webview 内で右クリックされたとき
   wv.addEventListener("context-menu", (e) => {
     try {
-      // ★ プロファイルメニュー表示中は閉じるだけ
+      // プロファイルメニュー表示中は閉じるだけ
       if (profileMenuOpen) {
         e.preventDefault();
         hideProfileMenu();
@@ -649,7 +794,7 @@ function createWebviewForTab(tab) {
   const wid = "wv-" + nextWebviewId++;
   wv.id = wid;
 
-  // ★ SplitView 検索のために必要
+  // SplitView 検索のために必要
   wv.dataset.tabId = tab.id;
 
   const profileId = tab.profileId || 1;
@@ -677,9 +822,12 @@ function getWebviewForTab(tab) {
   return createWebviewForTab(tab);
 }
 
-document.getElementById("win-min").onclick = () => window.mindraWindow.control("minimize");
-document.getElementById("win-max").onclick = () => window.mindraWindow.control("maximize");
-document.getElementById("win-close").onclick = () => window.mindraWindow.control("close");
+document.getElementById("win-min").onclick = () =>
+  window.mindraWindow.control("minimize");
+document.getElementById("win-max").onclick = () =>
+  window.mindraWindow.control("maximize");
+document.getElementById("win-close").onclick = () =>
+  window.mindraWindow.control("close");
 
 const topHoverZone = document.getElementById("top-hover-zone");
 const titlebar = document.getElementById("window-titlebar");
@@ -700,7 +848,7 @@ function hideTitlebar() {
   titlebarVisible = false;
 }
 
-// ★ ホバーモードのときだけ発動
+// ホバーモードのときだけ発動
 topHoverZone.addEventListener("mouseenter", () => {
   if (!titlebarFixedMode) {
     showTitlebar();
@@ -724,7 +872,7 @@ titlebar.addEventListener("mouseleave", () => {
 });
 
 window.addEventListener("mousemove", (e) => {
-  if (titlebarFixedMode) return; // ★ 固定モードなら自動非表示しない
+  if (titlebarFixedMode) return;
   if (!titlebarVisible) return;
   if (mouseDownInTitlebar) return;
   if (e.clientY > 24) {
@@ -733,10 +881,9 @@ window.addEventListener("mousemove", (e) => {
 });
 
 window.addEventListener("blur", () => {
-  if (titlebarFixedMode) return; // ★ 固定モードなら隠さない
+  if (titlebarFixedMode) return;
   hideTitlebar();
 });
-
 
 function setActiveTab(id) {
   const tab = tabs.find((t) => t.id === id);
@@ -744,7 +891,7 @@ function setActiveTab(id) {
 
   currentTabId = id;
 
-  // ★ SplitView に「すでに入っているタブ」のときだけ activeTabId を更新する
+  // SplitView に「すでに入っているタブ」のときだけ activeTabId を更新する
   if (splitCanvasMode && layoutRoot) {
     setActiveGroupForTab(id);
   }
@@ -760,13 +907,20 @@ function switchTab(id) {
 
 function createTab(url = "https://www.google.com", activate = true) {
   const id = nextTabId++;
+  const title = deriveTitleFromUrl(url);
   const tab = {
     id,
     url,
-    title: deriveTitleFromUrl(url),
+    title,
     profileId: 1,
     webviewId: null,
+    historyEntries: [],
+    historyIndex: -1,
+    _suppressNextHistory: false,
   };
+  // 初期URLを履歴に追加
+  addHistoryEntry(tab, url);
+
   tabs.push(tab);
 
   if (activate) {
@@ -792,7 +946,11 @@ function closeTab(id) {
     if (activeWebviewId === tab.webviewId) activeWebviewId = null;
   }
 
-  closedTabs.push({ url: tab.url, title: tab.title, profileId: tab.profileId });
+  closedTabs.push({
+    url: tab.url,
+    title: tab.title,
+    profileId: tab.profileId,
+  });
   tabs.splice(index, 1);
 
   removeTabFromLayout(id);
@@ -816,13 +974,22 @@ function restoreClosedTab() {
   const last = closedTabs.pop();
   if (!last) return;
   const id = nextTabId++;
+
+  const url = last.url || "https://www.google.com";
+  const title = last.title || deriveTitleFromUrl(url);
+
   const tab = {
     id,
-    url: last.url,
-    title: last.title,
+    url,
+    title,
     profileId: last.profileId || 1,
     webviewId: null,
+    historyEntries: [],
+    historyIndex: -1,
+    _suppressNextHistory: false,
   };
+  addHistoryEntry(tab, url);
+
   tabs.push(tab);
   setActiveTab(id);
   saveTabsState();
@@ -835,13 +1002,16 @@ sidebarUrlInput.addEventListener("keydown", (e) => {
     if (!resolved) return;
     const tab = getActiveTab();
     if (tab) {
-      tab.url = resolved;
-      tab.title = deriveTitleFromUrl(resolved);
+      // URL入力 → webview に投げて、実際の履歴追加は did-navigate 側で行う
       const wv = getWebviewForTab(tab);
-      if (wv) wv.src = resolved;
-      renderTabs();
-      syncSidebarUrlInput();
-      saveTabsState();
+      if (wv) {
+        try {
+          wv.src = resolved;
+        } catch (err) {
+          console.error("set webview src error", err);
+        }
+      }
+      // 入力欄はそのまま（ナビ後に did-navigate で同期）
     } else {
       createTab(resolved, true);
     }
@@ -863,15 +1033,11 @@ function updateSidebarUrlInputEnabled() {
     sidebarUrlInput.placeholder = "URL を入力 / 検索";
     sidebarUrlInput.style.background = "#ffffff";
 
-    // ★ここ大事：現在のタブのURLを復元
-    const activeTab = tabs.find(t => t.id === currentTabId);
-    if (activeTab && activeTab.lastUrl) {
-      sidebarUrlInput.value = activeTab.lastUrl;
-    } else {
-      sidebarUrlInput.value = "";
-    }
+    const activeTab = tabs.find((t) => t.id === currentTabId);
+    sidebarUrlInput.value = activeTab && activeTab.url ? activeTab.url : "";
   }
 }
+
 let findQuery = "";
 let findActive = false;
 
@@ -976,8 +1142,40 @@ function setZoom(factor) {
   }
 }
 
+// ----- 戻る／進む（履歴スタック優先） -----
+
 function goBack(targetTabId = null) {
-  const wv = targetTabId != null ? getWebviewByTabId(targetTabId) : getActiveWebview();
+  const tabId = targetTabId != null ? targetTabId : currentTabId;
+  const tab = tabs.find((t) => t.id === tabId);
+
+  if (tab) {
+    ensureTabHistoryFields(tab);
+    if (tab.historyIndex > 0) {
+      const newIndex = tab.historyIndex - 1;
+      const entry = tab.historyEntries[newIndex];
+      if (entry && entry.url) {
+        const wv = getWebviewForTab(tab);
+        if (wv) {
+          tab.historyIndex = newIndex;
+          tab.url = entry.url;
+          tab.title = entry.title || deriveTitleFromUrl(entry.url);
+          tab._suppressNextHistory = true;
+          try {
+            wv.src = entry.url;
+          } catch {}
+
+          if (tab.id === currentTabId) syncSidebarUrlInput();
+          renderTabs();
+          saveTabsState();
+          return;
+        }
+      }
+    }
+  }
+
+  // 履歴スタックで動かせなかったときは webview の標準履歴にフォールバック
+  const wv =
+    targetTabId != null ? getWebviewByTabId(targetTabId) : getActiveWebview();
   try {
     if (wv && wv.canGoBack && wv.canGoBack()) {
       wv.goBack();
@@ -986,7 +1184,40 @@ function goBack(targetTabId = null) {
 }
 
 function goForward(targetTabId = null) {
-  const wv = targetTabId != null ? getWebviewByTabId(targetTabId) : getActiveWebview();
+  const tabId = targetTabId != null ? targetTabId : currentTabId;
+  const tab = tabs.find((t) => t.id === tabId);
+
+  if (tab) {
+    ensureTabHistoryFields(tab);
+    if (
+      tab.historyIndex >= 0 &&
+      tab.historyIndex < tab.historyEntries.length - 1
+    ) {
+      const newIndex = tab.historyIndex + 1;
+      const entry = tab.historyEntries[newIndex];
+      if (entry && entry.url) {
+        const wv = getWebviewForTab(tab);
+        if (wv) {
+          tab.historyIndex = newIndex;
+          tab.url = entry.url;
+          tab.title = entry.title || deriveTitleFromUrl(entry.url);
+          tab._suppressNextHistory = true;
+          try {
+            wv.src = entry.url;
+          } catch {}
+
+          if (tab.id === currentTabId) syncSidebarUrlInput();
+          renderTabs();
+          saveTabsState();
+          return;
+        }
+      }
+    }
+  }
+
+  // 履歴スタックに進む先がなければ webview 標準にフォールバック
+  const wv =
+    targetTabId != null ? getWebviewByTabId(targetTabId) : getActiveWebview();
   try {
     if (wv && wv.canGoForward && wv.canGoForward()) {
       wv.goForward();
@@ -1006,7 +1237,8 @@ function reload(normal = true) {
 
 function toggleFullscreen() {
   if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
+    document.documentElement.requestFullscreen &&
+      document.documentElement.requestFullscreen();
   } else {
     document.exitFullscreen && document.exitFullscreen();
   }
@@ -1209,22 +1441,13 @@ function addContentMenuItem(label, handler) {
   contentMenu.appendChild(item);
 }
 
-// tabId を対象に戻る/進むを行う（webview を直接触る）
 function performTabHistory(tabId, direction) {
   if (tabId == null) return;
-  const tab = tabs.find((t) => t.id === tabId);
-  if (!tab) return;
-  const wv = getWebviewForTab(tab);
-  if (!wv) return;
 
-  try {
-    if (direction === "back") {
-      if (wv.canGoBack && wv.canGoBack()) wv.goBack();
-    } else {
-      if (wv.canGoForward && wv.canGoForward()) wv.goForward();
-    }
-  } catch (e) {
-    console.error("history navigation error", e);
+  if (direction === "back") {
+    goBack(tabId);
+  } else {
+    goForward(tabId);
   }
 }
 
@@ -1293,8 +1516,8 @@ function showContentMenu(x, y, tabId = null) {
 
 // 背景（document）で右クリックされたとき
 document.addEventListener("contextmenu", (e) => {
-  // ★ プロファイルメニューが開いているときは、
-  //    どこを右クリックしても「閉じるだけ」にする
+  //  プロファイルメニューが開いているときは、
+  //  どこを右クリックしても「閉じるだけ」にする
   if (profileMenuOpen) {
     e.preventDefault();
     hideProfileMenu();
@@ -1438,7 +1661,7 @@ if (!loaded) {
   createTab("https://www.google.com", true);
 }
 
-// ★ 起動直後にボタンの色とURL入力状態を反映
+// 起動直後にボタンの色とURL入力状態を反映
 updateSidebarModeButtonStyle();
 updateTitlebarModeButtonStyle();
 updateSplitViewButtonStyle();
@@ -1465,7 +1688,8 @@ if (window.MindraSettings && settingsRoot) {
   });
 
   // 起動時に一回だけ設定を反映（テーマなど）
-  const current = window.MindraSettings.getSettings && window.MindraSettings.getSettings();
+  const current =
+    window.MindraSettings.getSettings && window.MindraSettings.getSettings();
   if (current) {
     applySettingsFromSettingsModule(current);
   }
@@ -1486,7 +1710,9 @@ window.getSplitWebviews = function () {
 
     // タブを表示するノード
     if (node.type === "tab" && node.tabId) {
-      const wv = document.querySelector(`webview[data-tab-id="${node.tabId}"]`);
+      const wv = document.querySelector(
+        `webview[data-tab-id="${node.tabId}"]`
+      );
       if (wv) result.push(wv);
     }
 

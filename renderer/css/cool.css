@@ -394,3 +394,46 @@ html[data-theme="cool"] #settings-panel {
   color: #d7d8e0;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
 }
+
+/* --- 共通 --- */
+html[data-theme="cool"] .settings-button {
+  background: linear-gradient(135deg, #0a0d14, #141a28);
+  color: #dfe4ff;
+  border: 1px solid rgba(90, 140, 255, 0.35);
+  border-radius: 6px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: 0.15s ease;
+}
+
+html[data-theme="cool"] .settings-button:hover {
+  background: linear-gradient(135deg, #111624, #1b2438);
+  box-shadow: 0 0 8px rgba(120, 160, 255, 0.35);
+}
+
+html[data-theme="cool"] .settings-button:active {
+  transform: translateY(1px);
+}
+
+/* セレクトボックス */
+html[data-theme="cool"] .settings-select,
+html[data-theme="cool"] select {
+  background: #0a0e18;
+  color: #d6d9f4;
+  border: 1px solid rgba(90, 140, 255, 0.35);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+/* インライン（LLM入力とか） */
+html[data-theme="cool"] .settings-inline input {
+  background: #090c14;
+  color: #d4d8f4;
+  border: 1px solid rgba(120, 150, 255, 0.3);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+html[data-theme="cool"] .settings-inline button {
+  margin-left: 6px;
+}

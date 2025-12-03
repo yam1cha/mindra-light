@@ -1,13 +1,29 @@
 <!DOCTYPE html>
 <html lang="ja" data-theme="cute">
   <head>
-    <meta charset="UTF-8" />
+    <meta charset="UTF-8">
+
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="
+        default-src 'self';
+        script-src 'self';
+        img-src 'self' data: https:;
+        style-src 'self' 'unsafe-inline';
+        connect-src 'self' http: https: ws: wss:;
+        frame-src https:;
+      "
+    >
     <title>Mindra Light</title>
 
     <link rel="stylesheet" href="./renderer/css/style.css" />
     <link rel="stylesheet" href="./renderer/css/cool.css" />
     <link rel="stylesheet" href="./renderer/css/cute.css">
     <link rel="stylesheet" href="./renderer/css/simple.css" />
+    <link rel="stylesheet" href="./renderer/css/aurora.css" />
+    <link rel="stylesheet" href="./renderer/css/mint.css" />
+    <link rel="stylesheet" href="./renderer/css/zenith.css" />
+    <link rel="stylesheet" href="./renderer/css/emerald.css" />
   </head>
 
   <body>
@@ -18,7 +34,7 @@
       <div id="window-titlebar">
         <div class="window-titlebar-left">
           <img src="icons/mindra_icon_16.png" alt="Mindra" />
-          <span class="window-title-text">Mindra Light v0.5.2</span>
+          <span class="window-title-text">Mindra Light v0.6.0</span>
         </div>
         <div>
           <button id="win-min" class="window-btn">−</button>
@@ -78,9 +94,58 @@
 
         <div class="sidebar-section-divider"></div>
 
-        <div class="sidebar-url-row">
+        <div class="sidebar-url-row url-with-star">
           <input id="sidebar-url-input" type="text" placeholder="URL を入力 / 検索" />
+
+          <button
+            id="btn-sidebar-bookmark"
+            class="urlstar-btn"
+            title="このページをブックマーク"
+          >☆</button>
+
+          <button class="download-status-btn" id="download-status-btn" aria-label="DL">
+            <!-- 固定の丸い枠（常に表示される） -->
+            <svg class="icon-ring-base" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="9"
+                stroke="currentColor"
+                stroke-width="2"
+                fill="none"
+                opacity="0.35" />
+            </svg>
+
+            <!-- ローディング中の進捗リング（％で伸びる） -->
+            <svg class="icon-loading" viewBox="0 0 24 24">
+              <circle
+                class="dl-progress-ring"
+                cx="12"
+                cy="12"
+                r="9"
+                stroke="currentColor"
+                stroke-width="2"
+                fill="none"
+                stroke-linecap="round"
+                stroke-dasharray="56"
+                stroke-dashoffset="56"
+              />
+            </svg>
+
+            <!-- 通常の矢印 -->
+            <svg class="icon-normal" viewBox="0 0 24 24">
+              <path d="M12 5v9m0 0-4-4m4 4 4-4M6 19h12"
+                stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" fill="none" />
+            </svg>
+
+            <!-- 完了時の矢印（濃い色） -->
+            <svg class="icon-complete" viewBox="0 0 24 24">
+              <path d="M12 5v9m0 0-4-4m4 4 4-4M6 19h12"
+                stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" fill="none" />
+            </svg>
+          </button>
         </div>
+
+        <div id="bookmark-bar" class="bookmark-bar"></div>
 
         <button id="btn-new-tab">
           <span class="plus">＋</span><span>New Tab</span>
@@ -104,13 +169,14 @@
       <div id="right-sidebar">
         <div id="right-sidebar-main">
 
-          <!-- AIモードヘッダー（追加） -->
-          <div id="ai-header-row">
-            <span id="ai-mode-label">AIチャット</span>
-            <label id="ai-web-mode-toggle-wrapper" class="ai-web-toggle">
-              <input type="checkbox" id="ai-web-mode-toggle" />
-              <span class="ai-web-toggle-slider"></span>
-            </label>
+          <!-- AIモードヘッダー（セグメント切替） -->
+          <div id="ai-mode-header">
+            <div class="ai-mode-toggle">
+              <button type="button" id="ai-seg-ai" class="ai-mode-seg">AI</button>
+              <button type="button" id="ai-seg-web" class="ai-mode-seg">送信</button>
+              <input type="checkbox" id="ai-web-mode-toggle" hidden />
+            </div>
+            <span id="ai-mode-label" class="ai-mode-label">AIチャット</span>
           </div>
 
           <!-- 状態表示ゾーン -->

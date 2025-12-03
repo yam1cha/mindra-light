@@ -902,3 +902,158 @@ webview {
   box-sizing: border-box;
 }
 
+/* 右サイドバー ヘッダー行 */
+#right-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  gap: 8px;
+}
+
+/* トグル一式をひとまとまりに */
+#ai-mode-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 星が重ならないよう右側に余白を追加 */
+#sidebar-url-input {
+  padding-right: 28px;
+}
+
+/* ===== URL欄の星（全テーマ共通） ===== */
+.url-with-star {
+  position: relative;
+}
+
+.urlstar-btn {
+  position: absolute;
+  right: 38px;
+  top: calc(50% - 2px);
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0;
+  user-select: none;
+  opacity: 0.9;
+  transition: 0.12s ease;
+}
+
+.urlstar-btn:hover {
+  opacity: 1;
+  transform: translateY(-50%) scale(1.15);
+}
+
+.urlstar-btn.is-bookmarked {
+  font-weight: bold;
+}
+
+/* ===== ブックマークバー共通 ===== */
+.bookmark-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  margin-right: 6px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: inherit;
+  transition: 0.15s ease;
+}
+
+.bookmark-item:hover {
+  background: rgba(255,255,255,0.15); /* テーマによって調整してもOK */
+}
+
+.bookmark-favicon {
+  width: 16px;
+  height: 16px;
+}
+
+.download-status-btn {
+  width: 26px;
+  height: 26px;
+  margin-left: 0px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: default;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #555; /* Chromeのダウンロード完了アイコンっぽい色 */
+}
+
+/* すべてのsvgの基本セット */
+.download-status-btn svg {
+  width: 18px;
+  height: 18px;
+  position: absolute;
+  opacity: 0;
+}
+
+/* DLボタンの固定リング（背景の丸枠） */
+.download-status-btn .icon-ring-base {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* 進捗リング（上に重なる） */
+.download-status-btn .icon-loading {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  opacity: 0; /* is-loading のときだけ出す */
+  pointer-events: none;
+}
+
+/* 初期状態 → アイコンのみ */
+.download-status-btn .icon-normal {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  opacity: 1;
+}
+
+/* 完了状態アイコン */
+.download-status-btn .icon-complete {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  opacity: 0;
+}
+
+/* ローディング状態切り替え */
+.download-status-btn.is-loading .icon-normal,
+.download-status-btn.is-loading .icon-complete {
+  opacity: 0;
+}
+
+.download-status-btn.is-loading .icon-loading {
+  opacity: 1;
+}
+
+/* 完了状態 */
+.download-status-btn.is-complete .icon-normal,
+.download-status-btn.is-complete .icon-loading {
+  opacity: 0;
+}
+.download-status-btn.is-complete .icon-complete {
+  opacity: 1;
+}
+
+/* 進捗リングのアニメを滑らかに */
+.dl-progress-ring {
+  transition: stroke-dashoffset 0.12s linear;
+}

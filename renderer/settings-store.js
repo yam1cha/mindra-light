@@ -23,10 +23,10 @@
       maxTokens: 1024,
 
       // 現在のモデル
-      model: 'llama3:8b',
+      model: 'qwen2.5:7b-instruct',
 
       // モデル履歴
-      modelHistory: ['llama3:8b'],
+      modelHistory: ['qwen2.5:7b-instruct'],
     },
   };
 

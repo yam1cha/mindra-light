@@ -8,9 +8,6 @@
 //      * input: "mindra-ng"     → 汎用でNG（専用ルートあり）
 // ==========================================================
 
-console.log("[UniversalSearch] loaded (fully unified input/send)");
-
-
 // ----------------------------------------------------------
 // Pseudo-selector 判定（JS 側）
 // ----------------------------------------------------------
@@ -695,8 +692,6 @@ async function runActionInWebview(wv, query) {
 // エントリ（第2引数は互換のため受け取るだけで無視）
 // ----------------------------------------------------------
 window.runUniversalSearch = async function (query, _ignored) {
-  console.log("[UniversalSearch] query =", query);
-
   const targets = getTargets();
 
   if (targets.length === 0) {
@@ -737,6 +732,6 @@ window.dispatchUniversalSearchResult = function (msg) {
   if (window.mindraAI?.receiveSearchResult) {
     window.mindraAI.receiveSearchResult(msg);
   } else {
-    console.log("[UniversalSearch] AI not ready:", msg);
+    //_ignore
   }
 };

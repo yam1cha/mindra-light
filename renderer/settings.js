@@ -31,9 +31,13 @@
             <div class="settings-group">
               <label for="setting-theme">テーマ</label>
               <select id="setting-theme" class="settings-select">
-                <option value="simple">シンプル</option>
-                <option value="cool">クール</option>
-                <option value="cute">キュート</option>
+                <option value="simple">simple</option>
+                <option value="cool">cool</option>
+                <option value="cute">cute</option>
+                <option value="mint">mint</option>
+                <option value="emerald">emerald</option>
+                <option value="zenith">zenith</option>
+                <option value="aurora">aurora</option>
               </select>
             </div>
 
@@ -462,6 +466,9 @@
         if (typeof setRightSidebar === "function") {
           setRightSidebar(true);
         }
+        if (window.__mindraSetAiChatMode) {
+          window.__mindraSetAiChatMode();
+        }
         if (window.mindraRunStatusCheck) {
           window.mindraRunStatusCheck();
         }
@@ -479,6 +486,9 @@
     settings.llm.model = modelName;
     if (!settings.llm.modelHistory.includes(modelName)) {
       settings.llm.modelHistory.unshift(modelName);
+    }
+    if (window.__mindraSetAiChatMode) {
+      window.__mindraSetAiChatMode();
     }
 
     notifySettingsChanged();

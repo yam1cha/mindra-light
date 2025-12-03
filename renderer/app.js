@@ -58,6 +58,55 @@ const TABS_STATE_KEY =
   "mindraLightTabsState:profile-" +
   DEFAULT_PROFILE_NO;
 
+// --- ブックマーク保存用キー（プロファイルごと） ---
+const BOOKMARKS_STORAGE_KEY =
+  (CONFIG.SAVE_KEY_PREFIX || "") +
+  "mindraLightBookmarks:" +
+  STARTUP_PROFILE_ID;
+
+// [{ url, title }] の配列
+let bookmarks = [];
+
+function loadBookmarks() {
+  try {
+    const raw = localStorage.getItem(BOOKMARKS_STORAGE_KEY);
+    if (!raw) {
+      bookmarks = [];
+      return;
+    }
+    const data = JSON.parse(raw);
+    if (Array.isArray(data)) {
+      bookmarks = data
+        .filter((b) => b && typeof b.url === "string" && b.url)
+        .map((b) => ({
+          url: b.url,
+          title:
+            typeof b.title === "string" && b.title
+              ? b.title
+              : deriveTitleFromUrl(b.url),
+        }));
+    } else {
+      bookmarks = [];
+    }
+  } catch (err) {
+    console.error("loadBookmarks error", err);
+    bookmarks = [];
+  }
+}
+
+function saveBookmarks() {
+  try {
+    localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(bookmarks));
+  } catch (err) {
+    console.error("saveBookmarks error", err);
+  }
+}
+
+function isUrlBookmarked(url) {
+  if (!url) return false;
+  return Array.isArray(bookmarks) && bookmarks.some((b) => b && b.url === url);
+}
+
 const rootEl = document.getElementById("root");
 const splitOverlayEl = document.getElementById("split-overlay");
 const splitOverlayIndicator = document.getElementById("split-overlay-indicator");
@@ -81,8 +130,74 @@ const settingsPanel = document.getElementById("settings-panel");
 const settingsCloseBtn = document.getElementById("settings-panel-close");
 const btnOpenSettings = document.getElementById("btn-open-settings");
 const settingsRoot = document.getElementById("settings-root");
+const sidebarUrlInput = document.getElementById("sidebar-url-input");
+const sidebarBookmarkBtn = document.getElementById("btn-sidebar-bookmark");
 const LEFT_SIDEBAR_WIDTH = 240;
 const RIGHT_SIDEBAR_WIDTH = 240;
+
+// ===== ダウンロードステータス（URL欄右のアイコン制御） =====
+const downloadStatusBtn = document.getElementById("download-status-btn");
+const downloadProgressRing =
+  downloadStatusBtn &&
+  downloadStatusBtn.querySelector(".dl-progress-ring");
+
+const DOWNLOAD_RING_LENGTH = 56;
+
+if (downloadProgressRing) {
+  // 初期状態：リングは全部「隠れた」状態
+  downloadProgressRing.style.strokeDasharray = DOWNLOAD_RING_LENGTH;
+  downloadProgressRing.style.strokeDashoffset = DOWNLOAD_RING_LENGTH;
+}
+
+// グローバルに公開しておく（他のファイルから呼べるように）
+window.mindraDownloadStatus = {
+  // ダウンロード開始
+  start() {
+    if (!downloadStatusBtn || !downloadProgressRing) return;
+    downloadStatusBtn.classList.remove("is-complete");
+    downloadStatusBtn.classList.add("is-loading");
+    this.setProgress(0);
+  },
+
+  // 進捗更新（0〜100）
+  setProgress(percent) {
+    if (!downloadProgressRing) return;
+    const p = Math.max(0, Math.min(100, percent || 0));
+    const offset = DOWNLOAD_RING_LENGTH * (1 - p / 100);
+    downloadProgressRing.style.strokeDashoffset = offset;
+  },
+
+  // 完了
+  done() {
+    if (!downloadStatusBtn || !downloadProgressRing) return;
+    this.setProgress(100);
+    downloadStatusBtn.classList.remove("is-loading");
+    downloadStatusBtn.classList.add("is-complete");
+  },
+
+  // キャンセル／エラーなど → 元に戻す
+  reset() {
+    if (!downloadStatusBtn || !downloadProgressRing) return;
+    downloadStatusBtn.classList.remove("is-loading", "is-complete");
+    downloadProgressRing.style.strokeDashoffset = DOWNLOAD_RING_LENGTH;
+  },
+};
+
+// ★ デモ用：アイコンをクリックすると疑似ダウンロード（動作確認用）
+if (downloadStatusBtn) {
+  downloadStatusBtn.addEventListener("click", () => {
+    let p = 0;
+    window.mindraDownloadStatus.start();
+    const timer = setInterval(() => {
+      p += 10;
+      window.mindraDownloadStatus.setProgress(p);
+      if (p >= 100) {
+        clearInterval(timer);
+        window.mindraDownloadStatus.done();
+      }
+    }, 200);
+  });
+}
 
 // SplitView 用のオーバーレイ要素を window にも公開しておく
 window.splitOverlayEl = splitOverlayEl;
@@ -466,6 +581,11 @@ function updateTitlebarModeButtonStyle() {
   setToggleButtonVisual(btnToggleTitlebarMode, titlebarFixedMode);
 }
 
+function updateRightSidebarWidthStyles() {
+  if (!rightSidebar) return;
+  rightSidebar.style.width = RIGHT_SIDEBAR_WIDTH + "px";
+}
+
 function setRightSidebar(open) {
   rightSidebarOpen = open;
 
@@ -474,6 +594,8 @@ function setRightSidebar(open) {
   } else {
     rightSidebar.classList.remove("open");
   }
+
+  updateRightSidebarWidthStyles();
 
   // AI ボタンの見た目は CSS にまかせる
   setToggleButtonVisual(btnToggleAI, open);
@@ -649,6 +771,290 @@ function syncSidebarUrlInput() {
   input.value = tab && tab.url ? tab.url : "";
 }
 
+// ☆ボタンの見た目を現在タブのURLに合わせて更新
+function syncBookmarkStar() {
+  if (!sidebarBookmarkBtn) return;
+
+  // SplitView 中は URL欄も止まってるので、見た目だけ初期状態に
+  if (splitCanvasMode) {
+    sidebarBookmarkBtn.textContent = "☆";
+    sidebarBookmarkBtn.classList.remove("is-bookmarked");
+    return;
+  }
+
+  const tab = getActiveTab();
+  const url = tab && tab.url ? tab.url : "";
+
+  if (isUrlBookmarked(url)) {
+    sidebarBookmarkBtn.textContent = "★";
+    sidebarBookmarkBtn.classList.add("is-bookmarked");
+  } else {
+    sidebarBookmarkBtn.textContent = "☆";
+    sidebarBookmarkBtn.classList.remove("is-bookmarked");
+  }
+}
+
+// URL欄＋☆ボタンをまとめて同期
+function syncUrlAndBookmarkUI() {
+  syncSidebarUrlInput();
+  syncBookmarkStar();
+}
+
+// ブックマークバーの描画
+function renderBookmarkBar() {
+  const container = document.getElementById("bookmark-bar");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  if (!Array.isArray(bookmarks) || bookmarks.length === 0) {
+    return;
+  }
+
+  bookmarks.forEach((bm) => {
+    if (!bm || !bm.url) return;
+
+    const btn = document.createElement("button");
+    btn.className = "bookmark-item";
+
+    // favicon 取得（Googleのfavicon API）
+    const icon = document.createElement("img");
+    icon.className = "bookmark-favicon";
+    icon.src = `https://www.google.com/s2/favicons?domain=${bm.url}&sz=32`;
+
+    // テキスト
+    const label = document.createElement("span");
+    label.className = "bookmark-label";
+    label.textContent = bm.title || deriveTitleFromUrl(bm.url);
+
+    btn.appendChild(icon);
+    btn.appendChild(label);
+
+    btn.onclick = () => {
+      const resolved = resolveUrlOrSearch(bm.url);
+      if (!resolved) return;
+
+      const tab = getActiveTab();
+      if (tab) {
+        const wv = getWebviewForTab(tab);
+        if (wv) {
+          try {
+            wv.src = resolved;
+          } catch (err) {
+            console.error("bookmark navigate error", err);
+          }
+        }
+      } else {
+        createTab(resolved, true);
+      }
+    };
+
+    container.appendChild(btn);
+  });
+}
+
+// --- 左サイドバーのタブ並び替え用ドラッグ状態 ---
+let sidebarDraggingTabId = null;
+let sidebarDragOverItem = null;
+
+function clearSidebarDragIndicator() {
+  if (!sidebarDragOverItem) return;
+  sidebarDragOverItem.style.borderTop = "";
+  sidebarDragOverItem.style.borderBottom = "";
+  sidebarDragOverItem.removeAttribute("data-drop-pos");
+  sidebarDragOverItem = null;
+}
+
+// 左タブのドラッグ＆ドロップ設定
+function setupSidebarTabDragHandlers(item, tab) {
+  // タブ自体をドラッグ可能に
+  item.draggable = true;
+
+  item.addEventListener("dragstart", (e) => {
+    // × ボタンからのドラッグは無効
+    if (e.target && e.target.closest(".tab-close-btn")) {
+      e.preventDefault();
+      return;
+    }
+
+    sidebarDraggingTabId = tab.id;
+
+    const dt = e.dataTransfer;
+    if (dt) {
+      dt.effectAllowed = "move";
+      dt.setData("text/plain", String(tab.id));
+    }
+  });
+
+  item.addEventListener("dragend", () => {
+    sidebarDraggingTabId = null;
+    clearSidebarDragIndicator();
+  });
+
+  item.addEventListener("dragover", (e) => {
+    if (sidebarDraggingTabId == null) return;
+    if (sidebarDraggingTabId === tab.id) return;
+
+    e.preventDefault(); // drop を許可
+
+    const rect = item.getBoundingClientRect();
+    const before = e.clientY < rect.top + rect.height / 2;
+
+    clearSidebarDragIndicator();
+    sidebarDragOverItem = item;
+
+    // 上に入るか下に入るかで境界線だけ出す
+    item.style.borderTop = before ? "2px solid rgba(255,255,255,0.9)" : "";
+    item.style.borderBottom = !before
+      ? "2px solid rgba(255,255,255,0.9)"
+      : "";
+    item.dataset.dropPos = before ? "before" : "after";
+  });
+
+  item.addEventListener("dragleave", (e) => {
+    // 子要素に移っただけなら消さない
+    if (e.relatedTarget && item.contains(e.relatedTarget)) return;
+    clearSidebarDragIndicator();
+  });
+
+  item.addEventListener("drop", (e) => {
+    if (sidebarDraggingTabId == null) return;
+    if (sidebarDraggingTabId === tab.id) {
+      clearSidebarDragIndicator();
+      return;
+    }
+
+    e.preventDefault();
+
+    const fromId = sidebarDraggingTabId;
+    const fromIndex = tabs.findIndex((t) => t.id === fromId);
+    const toIndex = tabs.findIndex((t) => t.id === tab.id);
+    if (fromIndex === -1 || toIndex === -1) {
+      clearSidebarDragIndicator();
+      sidebarDraggingTabId = null;
+      return;
+    }
+
+    const rect = item.getBoundingClientRect();
+    const before = e.clientY < rect.top + rect.height / 2;
+
+    let insertIndex = before ? toIndex : toIndex + 1;
+
+    // いったん取り出す
+    const [moved] = tabs.splice(fromIndex, 1);
+
+    // 取り出した分 index がずれるので補正
+    if (insertIndex > fromIndex) insertIndex--;
+
+    tabs.splice(insertIndex, 0, moved);
+
+    sidebarDraggingTabId = null;
+    clearSidebarDragIndicator();
+
+    // 並び替えを反映
+    renderTabs();
+    saveTabsState();
+  });
+}
+
+let sidebarListDnDInitialized = false;
+
+// --- サイドバー全体（タブの外の空白部分も含む）でのドラッグ受付 ---
+let sidebarContainerDnDInitialized = false;
+
+function setupSidebarContainerDnD() {
+  if (!sidebar || sidebarContainerDnDInitialized) return;
+  sidebarContainerDnDInitialized = true;
+
+  sidebar.addEventListener("dragover", (e) => {
+    if (sidebarDraggingTabId == null) return;
+
+    const items = Array.from(tabListEl.querySelectorAll(".tab-item"));
+    if (items.length === 0) return;
+
+    const first = items[0];
+    const last = items[items.length - 1];
+
+    const y = e.clientY;
+    const firstRect = first.getBoundingClientRect();
+    const lastRect = last.getBoundingClientRect();
+
+    // 一度既存のガイドは消す
+    clearSidebarDragIndicator();
+
+    // ▼ 一番上より上 → 先頭に入れるガイド
+    if (y < firstRect.top) {
+      e.preventDefault();
+      sidebarDragOverItem = first;
+      first.style.borderTop = "2px solid rgba(255,255,255,0.9)";
+      first.dataset.dropPos = "before";
+      return;
+    }
+
+    // ▼ 一番下より下 → 末尾に入れるガイド
+    if (y > lastRect.bottom) {
+      e.preventDefault();
+      sidebarDragOverItem = last;
+      last.style.borderBottom = "2px solid rgba(255,255,255,0.9)";
+      last.dataset.dropPos = "after";
+      return;
+    }
+
+    // その間（タブの上）は各 tab-item の dragover が処理する
+  });
+
+  sidebar.addEventListener("drop", (e) => {
+    if (sidebarDraggingTabId == null) return;
+
+    const items = Array.from(tabListEl.querySelectorAll(".tab-item"));
+    if (items.length === 0) return;
+
+    const first = items[0];
+    const last = items[items.length - 1];
+
+    const y = e.clientY;
+    const firstRect = first.getBoundingClientRect();
+    const lastRect = last.getBoundingClientRect();
+
+    let fromId = sidebarDraggingTabId;
+    let fromIndex = tabs.findIndex((t) => t.id === fromId);
+    if (fromIndex === -1) {
+      sidebarDraggingTabId = null;
+      clearSidebarDragIndicator();
+      return;
+    }
+
+    let insertIndex = null;
+
+    // ▼ サイドバー内で、一番上より上の位置にドロップ → 先頭
+    if (y < firstRect.top) {
+      insertIndex = 0;
+    }
+    // ▼ サイドバー内で、一番下より下の位置にドロップ → 末尾
+    else if (y > lastRect.bottom) {
+      insertIndex = tabs.length;
+    } else {
+      // 中央あたりは各 tab-item の drop が処理するのでスルー
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const [moved] = tabs.splice(fromIndex, 1);
+
+    if (insertIndex > fromIndex) insertIndex--;
+
+    tabs.splice(insertIndex, 0, moved);
+
+    sidebarDraggingTabId = null;
+    clearSidebarDragIndicator();
+
+    renderTabs();
+    saveTabsState();
+  });
+}
+
 function renderTabs() {
   tabListEl.innerHTML = "";
 
@@ -687,6 +1093,8 @@ function renderTabs() {
     const closeBtn = document.createElement("button");
     closeBtn.className = "tab-close-btn";
     closeBtn.textContent = "×";
+    // × ボタン自体はドラッグ対象にしない
+    closeBtn.draggable = false;
     closeBtn.onclick = (e) => {
       e.stopPropagation();
       closeTab(tab.id);
@@ -697,6 +1105,10 @@ function renderTabs() {
     item.appendChild(left);
     item.appendChild(rightBox);
 
+    // ★ 並び替え用ドラッグイベントを設定
+    setupSidebarTabDragHandlers(item, tab);
+
+    // ★ SplitView 用のドラッグ開始（既存処理）はそのまま保持
     item.addEventListener("mousedown", handleTabMouseDown);
 
     item.addEventListener("contextmenu", (e) => {
@@ -723,6 +1135,7 @@ function renderTabs() {
 
     tabListEl.appendChild(item);
   });
+  setupSidebarContainerDnD();
 }
 
 function attachWebviewEvents(wv, tabId) {
@@ -763,7 +1176,7 @@ function attachWebviewEvents(wv, tabId) {
       tab._suppressNextHistory = false;
       tab.url = url;
       tab.title = deriveTitleFromUrl(url);
-      if (tab.id === currentTabId) syncSidebarUrlInput();
+      if (tab.id === currentTabId) syncUrlAndBookmarkUI();
       renderTabs();
       saveTabsState();
       return;
@@ -774,7 +1187,7 @@ function attachWebviewEvents(wv, tabId) {
 
     tab.url = url;
     tab.title = deriveTitleFromUrl(url);
-    if (tab.id === currentTabId) syncSidebarUrlInput();
+    if (tab.id === currentTabId) syncUrlAndBookmarkUI();
     renderTabs();
     saveTabsState();
   }
@@ -810,6 +1223,31 @@ function attachWebviewEvents(wv, tabId) {
       console.error("webview context-menu error", err);
     }
   });
+/*
+  wv.addEventListener("did-start-download", (e) => {
+    console.log("download started", e);
+
+    const item = e.downloadItem;
+    const url = item && item.getURL ? item.getURL() : "";
+
+    // タブに紐づける進捗バーを出す
+    showDownloadIndicator(tabId, url);
+
+    item.on("updated", (_event, state) => {
+      if (state === "progressing") {
+        const received = item.getReceivedBytes();
+        const total = item.getTotalBytes();
+        const percent = total > 0 ? received / total : 0;
+        updateDownloadIndicator(tabId, percent);
+      }
+    });
+
+    item.on("done", (_event, state) => {
+      console.log("download done", state);
+      hideDownloadIndicator(tabId);
+    });
+  });
+*/
 }
 
 function createWebviewForTab(tab) {
@@ -929,7 +1367,7 @@ function setActiveTab(id) {
   }
 
   applyCurrentLayout();
-  syncSidebarUrlInput();
+  syncUrlAndBookmarkUI();
   saveTabsState();
 }
 
@@ -1027,11 +1465,39 @@ function restoreClosedTab() {
   saveTabsState();
 }
 
-const sidebarUrlInput = document.getElementById("sidebar-url-input");
+// ☆ボタンクリック → 現在タブのURLをブックマークに追加 / 削除
+if (sidebarBookmarkBtn) {
+  sidebarBookmarkBtn.addEventListener("click", () => {
+    if (splitCanvasMode) return;
+
+    const tab = getActiveTab();
+    if (!tab || !tab.url) return;
+
+    const url = tab.url;
+    const title = tab.title || deriveTitleFromUrl(url);
+
+    // すでにあれば削除、なければ追加
+    const idx =
+      Array.isArray(bookmarks) && bookmarks.findIndex((b) => b && b.url === url);
+    if (idx >= 0) {
+      bookmarks.splice(idx, 1);
+    } else {
+      if (!Array.isArray(bookmarks)) bookmarks = [];
+      bookmarks.push({ url, title });
+    }
+
+    saveBookmarks();
+    renderBookmarkBar();
+    syncBookmarkStar();
+  });
+}
+
+// URL欄 Enter でナビゲーション
 sidebarUrlInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     const resolved = resolveUrlOrSearch(sidebarUrlInput.value);
     if (!resolved) return;
+
     const tab = getActiveTab();
     if (tab) {
       // URL入力 → webview に投げて、実際の履歴追加は did-navigate 側で行う
@@ -1059,6 +1525,12 @@ function updateSidebarUrlInputEnabled() {
     sidebarUrlInput.disabled = true;
     sidebarUrlInput.placeholder = "";
     sidebarUrlInput.style.background = "#f0f0f0";
+
+    // ☆ボタンも消す
+    if (sidebarBookmarkBtn) {
+      sidebarBookmarkBtn.style.visibility = "hidden";
+      sidebarBookmarkBtn.disabled = true;
+    }
   } else {
     // 通常モード → 入力可能
     sidebarUrlInput.disabled = false;
@@ -1067,6 +1539,13 @@ function updateSidebarUrlInputEnabled() {
 
     const activeTab = tabs.find((t) => t.id === currentTabId);
     sidebarUrlInput.value = activeTab && activeTab.url ? activeTab.url : "";
+
+    // ☆ボタンを表示＆状態同期
+    if (sidebarBookmarkBtn) {
+      sidebarBookmarkBtn.style.visibility = "visible";
+      sidebarBookmarkBtn.disabled = false;
+      syncBookmarkStar();
+    }
   }
 }
 
@@ -1196,7 +1675,7 @@ function goBack(targetTabId = null) {
             wv.src = entry.url;
           } catch {}
 
-          if (tab.id === currentTabId) syncSidebarUrlInput();
+          if (tab.id === currentTabId) syncUrlAndBookmarkUI();
           renderTabs();
           saveTabsState();
           return;
@@ -1238,7 +1717,7 @@ function goForward(targetTabId = null) {
             wv.src = entry.url;
           } catch {}
 
-          if (tab.id === currentTabId) syncSidebarUrlInput();
+          if (tab.id === currentTabId) syncUrlAndBookmarkUI();
           renderTabs();
           saveTabsState();
           return;
@@ -1677,6 +2156,7 @@ if (!loaded) {
   sidebarOpen = true;
   sidebarShrinkMode = true;
   rightSidebarOpen = true;
+  RIGHT_SIDEBAR_WIDTH = 240;
   titlebarFixedMode = true;
 
   // サイドバーを見た目上も「開いた状態」に
@@ -1698,6 +2178,11 @@ updateSidebarModeButtonStyle();
 updateTitlebarModeButtonStyle();
 updateSplitViewButtonStyle();
 updateSidebarUrlInputEnabled();
+
+// 起動時にブックマークをロード＆表示
+loadBookmarks();
+renderBookmarkBar();
+syncBookmarkStar();
 
 // 左サイドバーの状態を反映
 if (sidebarShrinkMode) {

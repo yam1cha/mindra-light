@@ -14,6 +14,8 @@
   // AIモード切替トグル
   const aiWebModeToggle = document.getElementById("ai-web-mode-toggle");
   const aiModeLabel = document.getElementById("ai-mode-label");
+  const aiSegAi = document.getElementById("ai-seg-ai");
+  const aiSegWeb = document.getElementById("ai-seg-web");
 
   if (
     !rightSidebarMain ||
@@ -24,7 +26,9 @@
     !aiSendBtn ||
     !aiInputRow ||
     !aiWebModeToggle ||
-    !aiModeLabel
+    !aiModeLabel ||
+    !aiSegAi ||
+    !aiSegWeb
   ) {
     console.warn("[sidebar.js] AI sidebar elements missing");
     return;
@@ -51,13 +55,17 @@
   let autoWebMode = false;
 
   // ===============================================
-  // AIモード（AIチャット / say限定）設定
+  // AIモード（AIチャット / Web送信）設定
   // ===============================================
   function updateAiModeLabel() {
     if (autoWebMode) {
       aiModeLabel.textContent = "送信モード";
+      aiSegAi.classList.remove("active");
+      aiSegWeb.classList.add("active");
     } else {
       aiModeLabel.textContent = "AIチャット";
+      aiSegAi.classList.add("active");
+      aiSegWeb.classList.remove("active");
     }
   }
 
@@ -94,6 +102,20 @@
   aiWebModeToggle.checked = autoWebMode;
   updateAiModeLabel();
 
+  // セグメントボタン → hidden checkbox に伝える
+  aiSegAi.addEventListener("click", () => {
+    if (!autoWebMode) return; // すでにAIモードなら何もしない
+    aiWebModeToggle.checked = false;
+    aiWebModeToggle.dispatchEvent(new Event("change"));
+  });
+
+  aiSegWeb.addEventListener("click", () => {
+    if (autoWebMode) return; // すでに送信モードなら何もしない
+    aiWebModeToggle.checked = true;
+    aiWebModeToggle.dispatchEvent(new Event("change"));
+  });
+
+  // チェックボックス側が変わったとき
   aiWebModeToggle.addEventListener("change", () => {
     autoWebMode = !!aiWebModeToggle.checked;
     saveAiModeToSettings();
@@ -175,13 +197,13 @@
     appendMessage("user", text);
 
     try {
-      // まずは Webコマンドモードの判定
+      // 送信モード：Webコマンド
       if (autoWebMode && typeof window.runUniversalSearch === "function") {
         try {
           const result = await window.runUniversalSearch(text);
 
           if (!result) {
-            appendMessage("assistant", "ブラウザに指示を送ったよ。");
+            appendMessage("assistant", "ブラウザに送ったよ。");
             return;
           }
 
@@ -209,7 +231,7 @@
           console.error("autoWebMode runUniversalSearch error:", e);
           appendMessage(
             "assistant",
-            "Webコマンドの実行中にエラーが起きたよ。"
+            "コマンドの実行中にエラーが起きたよ。"
           );
           return;
         }
@@ -260,6 +282,26 @@
   // レイアウト（ボタン状態・表示切替）
   // ===============================================
   function applyLayout() {
+    // ---------- 送信モード（Webコマンド） ----------
+    // LLM状態は一切見せない。ステータスゾーン非表示。
+    if (autoWebMode) {
+      aiStatusZone.style.display = "none";
+      chatContainer.style.display = "flex";
+      aiInputRow.style.display = "flex";
+
+      if (generating) {
+        aiInput.disabled = true;
+        aiSendBtn.disabled = true;
+        aiInput.placeholder = "処理中…";
+      } else {
+        aiInput.disabled = false;
+        aiSendBtn.disabled = false;
+        aiInput.placeholder = "";
+      }
+      return;
+    }
+
+    // ---------- AIチャットモード ----------
     if (!modelReady || checkingStatus) {
       aiStatusZone.style.display = "flex";
       chatContainer.style.display = "none";
@@ -300,11 +342,7 @@
     } else {
       aiInput.disabled = false;
       aiSendBtn.disabled = false;
-      if (autoWebMode) {
-        aiInput.placeholder = "自然文でWebに指示 / 検索";
-      } else {
-        aiInput.placeholder = "Shift+Enterで改行";
-      }
+      aiInput.placeholder = "Shift+Enterで改行";
     }
   }
 
@@ -324,6 +362,7 @@
       lastErrorType = "unknown";
       lastErrorMessage = "mindraAI.getStatus が見つからないよ。";
       checkingStatus = false;
+      modelReady = false;
       applyLayout();
       return;
     }
@@ -420,6 +459,15 @@
     }
   };
 
+  // === 外部からAIモード強制切り替え用 ===
+  window.__mindraSetAiChatMode = function () {
+    autoWebMode = false;
+    aiWebModeToggle.checked = false;
+    saveAiModeToSettings();
+    updateAiModeLabel();
+    applyLayout();
+  };
+  
   // ===============================================
   // ボタンイベント
   // ===============================================
@@ -437,4 +485,5 @@
 
   applyLayout();
   runStatusCheck();
+
 })();

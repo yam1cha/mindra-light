@@ -1,9 +1,11 @@
-/* Mindra Light - Simple theme (light / flat) */
+/* =========================================
+   Mindra Light - Simple Theme (light / flat)
+   ========================================= */
 
-/* ==========================================
-   SIMPLE: テーマ変数
-   ========================================== */
 
+/* =========================================
+ * テーマ変数
+ * =======================================*/
 html[data-theme="simple"] {
   --bg: #f5f5f8;
   --side-bg: #f7f7fb;
@@ -17,16 +19,20 @@ html[data-theme="simple"] {
   --accent: #6366f1;
 }
 
-/* ===== 全体背景 ===== */
 
+/* =========================================
+ * 全体背景
+ * =======================================*/
 html[data-theme="simple"] body,
 html[data-theme="simple"] #root {
   background: var(--bg);
   color: #222222;
 }
 
-/* ===== タイトルバー ===== */
 
+/* =========================================
+ * タイトルバー
+ * =======================================*/
 html[data-theme="simple"] #window-titlebar {
   background: #dddddd;
   border-bottom: 1px solid var(--border-color);
@@ -49,8 +55,10 @@ html[data-theme="simple"] .window-btn.close:hover {
   color: #ffffff;
 }
 
-/* ===== 左サイドバー本体 ===== */
 
+/* =========================================
+ * 左サイドバー
+ * =======================================*/
 html[data-theme="simple"] #sidebar {
   background: var(--side-bg);
   border-right: 1px solid var(--border-color);
@@ -65,10 +73,10 @@ html[data-theme="simple"] #sidebar .sidebar-title {
   color: #555555;
 }
 
-/* ===========================================
-   SIMPLE：左上 4 ボタン（フラット＋アクセント）
-   =========================================== */
 
+/* =========================================
+ * 左上 4 ボタン（サイドバーアイコン）
+ * =======================================*/
 html[data-theme="simple"] .sidebar-icon-btn {
   background: #ffffff;
   border-radius: 10px;
@@ -91,8 +99,10 @@ html[data-theme="simple"] .sidebar-icon-btn.active {
     0 0 6px rgba(99, 102, 241, 0.5);
 }
 
-/* ===== URL入力 ===== */
 
+/* =========================================
+ * URL入力欄
+ * =======================================*/
 html[data-theme="simple"] #sidebar-url-input {
   background: #ffffff !important;
   border: 1px solid rgba(0, 0, 0, 0.12) !important;
@@ -109,8 +119,20 @@ html[data-theme="simple"] #sidebar-url-input:focus {
   outline: none;
 }
 
-/* + New Tab ボタン */
+html[data-theme="simple"] .urlstar-btn {
+  color: #888;
+}
+html[data-theme="simple"] .urlstar-btn.is-bookmarked {
+  color: #ffd447;
+}
 
+html[data-theme="simple"] .download-status-btn svg {
+  color: #000;
+}
+
+/* =========================================
+ * New Tab ボタン
+ * =======================================*/
 html[data-theme="simple"] #btn-new-tab {
   color: #333333;
   background: #ffffff;
@@ -122,10 +144,10 @@ html[data-theme="simple"] #btn-new-tab:hover {
   background: #f3f3ff;
 }
 
-/* =========================================================
-   SIMPLE：Split View ボタン
-   ========================================================= */
 
+/* =========================================
+ * Split View ボタン
+ * =======================================*/
 html[data-theme="simple"] #btn-split-view {
   width: 100%;
   height: 30px;
@@ -155,8 +177,10 @@ html[data-theme="simple"] #btn-split-view.active {
     0 0 6px rgba(99, 102, 241, 0.5);
 }
 
-/* ===== タブ一覧 ===== */
 
+/* =========================================
+ * タブ一覧
+ * =======================================*/
 html[data-theme="simple"] .tab-item {
   color: var(--tab-fg);
 }
@@ -166,7 +190,6 @@ html[data-theme="simple"] .tab-item:hover {
 }
 
 /* アクティブタブ */
-
 html[data-theme="simple"] .tab-item.active {
   background: #ffffff;
   color: #222222;
@@ -189,17 +212,21 @@ html[data-theme="simple"] .tab-close-btn:hover {
   color: #ff4b6b;
 }
 
-/* ===== 右サイドバー（AI） ===== */
 
-html[data-theme="simple"] html[data-theme="simple"] #right-sidebar {
+/* =========================================
+ * 右サイドバー（AIエリアの背景）
+ * =======================================*/
+html[data-theme="simple"] #right-sidebar {
   background: var(--side-bg);
   color: #222222;
   border-left: 1px solid var(--border-color);
 }
 
 
-/* AI入力欄 */
-
+/* =========================================
+ * AI入力エリア & 再チェックボタン
+ *    （右サイドバー下部）
+ * =======================================*/
 html[data-theme="simple"] #ai-input {
   background: #ffffff;
   border-color: rgba(0, 0, 0, 0.12);
@@ -217,8 +244,45 @@ html[data-theme="simple"] #ai-send {
   box-shadow: 0 0 4px rgba(99, 102, 241, 0.4);
 }
 
-/* ===== ページ内検索 ===== */
+/* AI再チェックボタン */
+[data-theme="simple"] #ai-recheck-btn {
+  background: var(--accent);
+  color: #ffffff;
+  border-radius: 999px;
+  border: none;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
+}
 
+[data-theme="simple"] #ai-recheck-btn:hover {
+  background: #5558e8;
+}
+
+
+/* =========================================
+ * AIチャットバブル（中央の吹き出し）
+ * =======================================*/
+html[data-theme="simple"] .ai-chat-bubble.assistant {
+  background: #ffffff;
+  color: #222222;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 10px;
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+html[data-theme="simple"] .ai-chat-bubble.user {
+  background: var(--accent);
+  color: #ffffff;
+  border-radius: 10px;
+  border: 1px solid rgba(72, 76, 200, 0.9);
+  box-shadow:
+    0 2px 6px rgba(72, 76, 200, 0.35);
+}
+
+
+/* =========================================
+ * ページ内検索バー
+ * =======================================*/
 html[data-theme="simple"] #find-bar {
   background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.08);
@@ -234,8 +298,10 @@ html[data-theme="simple"] #find-close:hover {
   background: rgba(0, 0, 0, 0.06);
 }
 
-/* ===== コンテキストメニュー ===== */
 
+/* =========================================
+ * コンテキストメニュー
+ * =======================================*/
 [data-theme="simple"] .content-menu {
   background: #ffffff;
   color: #222222;
@@ -247,23 +313,10 @@ html[data-theme="simple"] #find-close:hover {
   background: rgba(99, 102, 241, 0.08);
 }
 
-/* ===== SIMPLE：AI再チェックボタン（シンプル版） ===== */
 
-[data-theme="simple"] #ai-recheck-btn {
-  background: var(--accent);
-  color: #ffffff;
-  border-radius: 999px;
-  border: none;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
-}
-
-[data-theme="simple"] #ai-recheck-btn:hover {
-  background: #5558e8;
-}
-
-
-/* ===== SIMPLE：設定パネル ===== */
-
+/* =========================================
+ * 設定オーバーレイ & パネル
+ * =======================================*/
 html[data-theme="simple"] #settings-overlay {
   background: rgba(0, 0, 0, 0.25);
 }
@@ -275,7 +328,8 @@ html[data-theme="simple"] #settings-panel {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
 }
 
-/* --- 共通 --- */
+
+/* --- 設定：共通ボタン --- */
 html[data-theme="simple"] .settings-button {
   background: #ffffff;
   color: #333333;
@@ -294,7 +348,12 @@ html[data-theme="simple"] .settings-button:active {
   transform: translateY(1px);
 }
 
-/* セレクトボックス */
+html[data-theme="simple"] #settings-panel-close {
+  color: #000;
+}
+
+
+/* --- 設定：セレクトボックス --- */
 html[data-theme="simple"] .settings-select,
 html[data-theme="simple"] select {
   background: #ffffff;
@@ -304,7 +363,8 @@ html[data-theme="simple"] select {
   padding: 6px 10px;
 }
 
-/* 入力欄 */
+
+/* --- 設定：インライン入力 --- */
 html[data-theme="simple"] .settings-inline input {
   background: #ffffff;
   color: #222222;
@@ -315,4 +375,66 @@ html[data-theme="simple"] .settings-inline input {
 
 html[data-theme="simple"] .settings-inline button {
   margin-left: 6px;
+}
+
+
+/* =========================================
+ * AIモード セグメントトグル
+ *    （右サイドバー上部ヘッダー）
+ * =======================================*/
+html[data-theme="simple"] #ai-mode-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 4px 6px 0;
+}
+
+html[data-theme="simple"] .ai-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme="simple"] #ai-web-mode-toggle {
+  display: none;
+}
+
+html[data-theme="simple"] .ai-mode-seg {
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 2px 10px;
+  min-width: 40px;
+  height: 22px;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  background: #f5f5f8;
+  color: #333333;
+  transition: 0.12s ease;
+}
+
+html[data-theme="simple"] .ai-mode-seg:hover {
+  background: #eeeeff;
+}
+
+html[data-theme="simple"] .ai-mode-seg.active {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: rgba(72, 76, 200, 0.9);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.7),
+    0 0 6px rgba(99, 102, 241, 0.5);
+}
+
+html[data-theme="simple"] .ai-mode-label {
+  font-size: 10px;
+  color: #555555;
+  opacity: 0.9;
+  padding-right: 6px;
 }

@@ -14,7 +14,7 @@ const http = require("http");
 
 // デフォルト設定（必要なら環境変数で上書き）
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
-const OLLAMA_MODEL = process.env.MINDRA_AI_MODEL || "llama3:8b";
+const OLLAMA_MODEL = process.env.MINDRA_AI_MODEL || "qwen2.5:7b-instruct";
 
 // ステータス用ファイル
 let statusFilePath = null;

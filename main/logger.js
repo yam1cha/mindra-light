@@ -67,3 +67,31 @@ module.exports = {
     return logDir;
   },
 };
+
+// =======================================
+// 古いログの自動削除（90日）
+// =======================================
+function removeOldLogs(logDir, maxDays = 90) {
+  try {
+    if (!fs.existsSync(logDir)) return;
+
+    const files = fs.readdirSync(logDir);
+    const now = Date.now();
+    const limit = maxDays * 24 * 60 * 60 * 1000;
+
+    for (const file of files) {
+      const full = path.join(logDir, file);
+      const stat = fs.statSync(full);
+      if (!stat.isFile()) continue;
+
+      const age = now - stat.mtimeMs;
+      if (age > limit) {
+        fs.unlinkSync(full);
+      }
+    }
+  } catch (e) {
+    console.error("[logger] failed to delete old logs:", e);
+  }
+}
+
+module.exports.removeOldLogs = removeOldLogs;

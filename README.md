@@ -2,6 +2,11 @@
 
 カスタム Electron ベースの軽量AIブラウザ。
 
+Ver 0.6.0 メモ
+・ダウンロードボタンはデモのみ
+・ブックマークはインターフェース未作成
+
+
 
 ## インストール
 
@@ -63,16 +68,16 @@ ollama list
 
 ---
 
-### 3. 推奨モデル（Llama3:8B）
+### 3. 推奨モデル（qwen2.5:7b-instruct）
 ```bash
-ollama pull llama3:8b
+ollama pull qwen2.5:7b-instruct
 ```
 
 ---
 
 ### 4. テスト実行
 ```bash
-ollama run llama3:8b
+ollama run qwen2.5:7b-instruct
 ```
 
 ---
@@ -80,7 +85,7 @@ ollama run llama3:8b
 ### 5. モデル管理
 ```bash
 ollama list
-ollama rm llama3:8b
+ollama rm qwen2.5:7b-instruct
 ```
 
 ------------------------------------------------------------------------

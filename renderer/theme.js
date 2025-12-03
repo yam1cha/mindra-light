@@ -8,15 +8,31 @@
   const THEMES = {
     simple: {
       id: "simple",
-      label: "シンプル",
+      label: "simple",
     },
     cool: {
       id: "cool",
-      label: "クール",
+      label: "cool",
     },
     cute: {
       id: "cute",
-      label: "キュート",
+      label: "cute",
+    },
+    mint: {
+      id: "mint",
+      label: "mint",
+    },
+    emerald: {
+      id: "emerald",
+      label: "emerald",
+    },
+    zenith: {
+      id: "zenith",
+      label: "zenith",
+    },
+    aurora: {
+      id: "aurora",
+      label: "aurora",
     },
   };
 

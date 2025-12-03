@@ -1,0 +1,478 @@
+/* =========================================
+   Mindra Light - Mint
+   data-theme="mint"
+   ======================================= */
+
+/* ---------- テーマ変数（さらに緑寄せ） ---------- */
+html[data-theme="mint"] {
+  /* 全体背景：ほんのりミントのカンバス */
+  --cl-bg: #edf9f3;
+  --cl-panel: #e0f4ea;
+  --cl-panel-soft: #e9f7ef;
+  --cl-ai-bg: #eef9f3;
+
+  --cl-border-soft: rgba(0, 0, 0, 0.04);
+  --cl-border-strong: rgba(22, 165, 128, 0.9);
+
+  /* ミントをもう一段“緑”へ寄せた */
+  --cl-accent: #16b187;          /* 濃いめミント */
+  --cl-accent-soft: #5fd7b3;     /* 明るいパステルミント */
+
+  --cl-text-main: #05372d;
+  --cl-text-muted: #5a8379;
+}
+
+/* ---------- 全体背景 ---------- */
+html[data-theme="mint"] body,
+html[data-theme="mint"] #root {
+  background: var(--cl-bg);
+  color: var(--cl-text-main);
+}
+
+/* ---------- タイトルバー（白→薄ミントグラデ） ---------- */
+html[data-theme="mint"] #window-titlebar {
+  background: linear-gradient(
+    90deg,
+    #dff4ea 0%,
+    #e9faf2 40%,
+    #f5fdf9 100%
+  );
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+html[data-theme="mint"] .window-title-text {
+  color: #163c33;
+}
+
+html[data-theme="mint"] .window-btn {
+  color: #56736b;
+  border-radius: 999px;
+}
+
+html[data-theme="mint"] .window-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+html[data-theme="mint"] .window-btn.close:hover {
+  background: #ff6b81;
+  color: #ffffff;
+}
+
+/* ---------- 左サイドバー ---------- */
+html[data-theme="mint"] #sidebar {
+  background: linear-gradient(
+    180deg,
+    #eaf8f1 0%,
+    #ddf2e7 45%,
+    #d7efe3 100%
+  );
+  border-right: 1px solid var(--cl-border-soft);
+  color: var(--cl-text-main);
+  box-shadow: 4px 0 14px rgba(0, 0, 0, 0.05);
+}
+
+html[data-theme="mint"] #sidebar .sidebar-section-divider {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+html[data-theme="mint"] #sidebar .sidebar-title {
+  color: #17382f;
+  letter-spacing: 0.03em;
+}
+
+/* ---------- 左上 4 ボタン（ゆるふわポップ） ---------- */
+html[data-theme="mint"] .sidebar-icon-btn {
+  background: radial-gradient(circle at 20% 0%,
+      #ffffff,
+      #effbf4);
+  border-radius: 14px;
+  border: 1px solid rgba(22, 165, 128, 0.6) !important;
+  color: #0d6a52;
+  box-shadow:
+    0 2px 0 rgba(255, 255, 255, 0.9),
+    0 6px 10px rgba(22, 165, 128, 0.25);
+  transition: transform 0.12s ease, box-shadow 0.12s ease,
+              background 0.12s ease;
+}
+
+html[data-theme="mint"] .sidebar-icon-btn:hover:not(.active) {
+  background: radial-gradient(circle at 20% 0%,
+      #ffffff,
+      #e6fbf3);
+  transform: translateY(-1px);
+  box-shadow:
+    0 3px 0 rgba(255, 255, 255, 1),
+    0 8px 14px rgba(22, 165, 128, 0.35);
+}
+
+html[data-theme="mint"] .sidebar-icon-btn.active {
+  background: linear-gradient(135deg, #16b187, #5fd7b3) !important;
+  border-color: rgba(206, 255, 235, 0.95) !important;
+  color: #ffffff !important;
+  box-shadow:
+    0 3px 0 rgba(255, 255, 255, 0.8),
+    0 10px 18px rgba(22, 165, 128, 0.5);
+}
+
+/* ---------- URL 入力欄 ---------- */
+html[data-theme="mint"] #sidebar-url-input {
+  background: #ffffff !important;
+  border: 1px solid rgba(22, 165, 128, 0.8) !important;
+  color: var(--cl-text-main) !important;
+  border-radius: 999px;
+  padding-left: 10px;
+  padding-right: 10px;
+  box-shadow:
+    0 2px 0 rgba(255, 255, 255, 0.9),
+    0 4px 10px rgba(22, 165, 128, 0.2);
+}
+
+/* 星アイコン分の余白を少し増やす */
+html[data-theme="mint"] #sidebar-url-input {
+  padding-right: 32px !important;
+}
+
+html[data-theme="mint"] #sidebar-url-input::placeholder {
+  color: #8faea7;
+}
+
+html[data-theme="mint"] #sidebar-url-input:focus {
+  border-color: var(--cl-accent-soft);
+  box-shadow:
+    0 0 0 2px rgba(95, 215, 179, 0.55),
+    0 4px 12px rgba(22, 165, 128, 0.25);
+  outline: none;
+}
+
+html[data-theme="mint"] .urlstar-btn {
+  color: #59bfa3;
+}
+html[data-theme="mint"] .urlstar-btn.is-bookmarked {
+  color: #16b187;
+}
+
+html[data-theme="mint"] .download-status-btn svg {
+  color: #16b187 !important;
+}
+
+/* ---------- New Tab ボタン ---------- */
+html[data-theme="mint"] #btn-new-tab {
+  color: var(--cl-text-main);
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.03);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.04);
+}
+
+html[data-theme="mint"] #btn-new-tab:hover {
+  background: #ffffff;
+  border-color: rgba(22, 165, 128, 0.35);
+}
+
+/* ---------- Split View ボタン ---------- */
+html[data-theme="mint"] #btn-split-view {
+  width: 100%;
+  height: 32px;
+  justify-content: flex-start;
+  padding: 5px 10px;
+  border-radius: 12px;
+
+  background: #f2fbf6;
+  border: 1px solid rgba(22, 165, 128, 0.35);
+  color: var(--cl-text-main);
+  transition: 0.15s ease;
+}
+
+html[data-theme="mint"] #btn-split-view:hover {
+  background: #ffffff;
+}
+
+html[data-theme="mint"] #btn-split-view.active {
+  background: #d9f4e7;
+  border-color: rgba(22, 165, 128, 0.75);
+  box-shadow:
+    0 3px 0 rgba(255, 255, 255, 0.8),
+    0 8px 14px rgba(22, 165, 128, 0.3);
+}
+
+/* ---------- タブ一覧 ---------- */
+html[data-theme="mint"] .tab-item {
+  background: transparent;
+  color: var(--cl-text-main);
+  border-radius: 10px;
+}
+
+/* ホバー時：うっすらミント */
+html[data-theme="mint"] .tab-item:hover {
+  background: rgba(231, 246, 239, 0.85);
+}
+
+/* ★ アクティブタブ：真っ白→淡いミントカードに変更 ---------- */
+html[data-theme="mint"] .tab-item.active {
+  background: linear-gradient(
+    135deg,
+    #dbf5e9 0%,
+    #e7faf1 60%
+  );
+  border: 1px solid rgba(22, 165, 128, 0.9);
+  color: var(--cl-text-main);
+  box-shadow:
+    0 2px 0 rgba(255, 255, 255, 0.9),
+    0 8px 14px rgba(0, 0, 0, 0.06);
+}
+
+html[data-theme="mint"] .tab-profile-dot {
+  background: var(--cl-accent);
+  border-color: rgba(255, 255, 255, 0.9);
+}
+
+html[data-theme="mint"] .tab-close-btn {
+  color: #81958f;
+}
+
+html[data-theme="mint"] .tab-close-btn:hover {
+  color: #ff6b81;
+}
+
+/* ---------- 右サイドバー背景（ミント寄り） ---------- */
+html[data-theme="mint"] #right-sidebar {
+  background: radial-gradient(circle at 0% 0%,
+      #f6fffb 0%,
+      #e1f4ea 40%,
+      #ecf8f2 100%);
+  color: var(--cl-text-main);
+  border-left: 1px solid var(--cl-border-soft);
+}
+
+/* ---------- AI 入力エリア & 送信ボタン ---------- */
+html[data-theme="mint"] #ai-input {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.06);
+  color: var(--cl-text-main);
+  border-radius: 999px;
+  padding-left: 14px;
+  padding-right: 14px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
+}
+
+html[data-theme="mint"] #ai-input::placeholder {
+  color: var(--cl-text-muted);
+}
+
+html[data-theme="mint"] #ai-send {
+  background: linear-gradient(135deg, #16b187, #5fd7b3);
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  box-shadow:
+    0 3px 0 rgba(255, 255, 255, 0.8),
+    0 6px 14px rgba(16, 163, 127, 0.45);
+}
+
+/* ---------- AI 再チェックボタン ---------- */
+[data-theme="mint"] #ai-recheck-btn {
+  position: relative;
+  padding: 10px 28px;
+  border-radius: 999px;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: center;
+
+  background: linear-gradient(145deg, #16b187, #5fd7b3);
+  color: #ffffff;
+
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.18),
+    0 0 0 1px rgba(190, 255, 234, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="mint"] #ai-recheck-btn::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 3px;
+  height: 48%;
+  border-radius: 999px;
+  background: linear-gradient(
+    rgba(255, 255, 255, 0.8),
+    transparent
+  );
+  pointer-events: none;
+}
+
+[data-theme="mint"] #ai-recheck-btn:hover {
+  background: linear-gradient(145deg, #1ac093, #78e4c4);
+  transform: translateY(-1px);
+}
+
+[data-theme="mint"] #ai-recheck-btn:active {
+  transform: translateY(0);
+  box-shadow:
+    0 5px 12px rgba(0, 0, 0, 0.16),
+    0 0 0 1px rgba(190, 255, 234, 0.8),
+    inset 0 2px 4px rgba(0, 0, 0, 0.12);
+}
+
+/* ---------- チャットバブル ---------- */
+/* Assistant：しっかり緑ミントバブル */
+html[data-theme="mint"] .ai-chat-bubble.assistant {
+  background: linear-gradient(
+    135deg,
+    #d3f5e7 0%,
+    #c2eedf 45%,
+    #d8f7ea 100%
+  );
+  color: #064637;
+  border-radius: 18px;
+  border: 1px solid rgba(22, 165, 128, 0.6);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
+}
+
+/* User：ちょっと深めミント */
+html[data-theme="mint"] .ai-chat-bubble.user {
+  background: #d1f1e3;
+  color: #053a30;
+  border-radius: 18px;
+  border: 1px solid rgba(18, 132, 105, 0.5);
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* ---------- ページ内検索 ---------- */
+html[data-theme="mint"] #find-bar {
+  background: #e4f3ec;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+}
+
+html[data-theme="mint"] #find-input {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.12);
+  color: var(--cl-text-main);
+}
+
+html[data-theme="mint"] #find-close:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+/* ---------- コンテキストメニュー ---------- */
+[data-theme="mint"] .content-menu {
+  background: #ffffff;
+  color: var(--cl-text-main);
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.16);
+}
+
+[data-theme="mint"] .content-menu-item {
+  padding: 6px 12px;
+}
+
+[data-theme="mint"] .content-menu-item:hover {
+  background: #e3f4ec;
+}
+
+/* ---------- 設定パネル ---------- */
+html[data-theme="mint"] #settings-overlay {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+html[data-theme="mint"] #settings-panel {
+  background: var(--cl-panel-soft);
+  border: 1px solid rgba(22, 165, 128, 0.45);
+  color: var(--cl-text-main);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.18);
+  border-radius: 18px;
+}
+
+/* 設定ボタン */
+html[data-theme="mint"] .settings-button {
+  background: #f8fffb;
+  color: var(--cl-text-main);
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: 0.15s ease;
+}
+
+html[data-theme="mint"] .settings-button:hover {
+  background: #ffffff;
+  border-color: rgba(22, 165, 128, 0.6);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+/* セレクト & 入力欄 */
+html[data-theme="mint"] .settings-select,
+html[data-theme="mint"] select {
+  background: #ffffff;
+  color: var(--cl-text-main);
+  border-radius: 10px;
+  border: 1px solid rgba(22, 165, 128, 0.7);
+  padding: 6px 10px;
+}
+
+html[data-theme="mint"] .settings-inline input {
+  background: #ffffff;
+  color: var(--cl-text-main);
+  border-radius: 10px;
+  border: 1px solid rgba(22, 165, 128, 0.7);
+  padding: 6px 8px;
+}
+
+/* ---------- AIモードトグル ---------- */
+html[data-theme="mint"] #ai-mode-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 4px 6px 0;
+}
+
+html[data-theme="mint"] .ai-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: #f8fffc;
+  border: 1px solid rgba(74, 201, 162, 0.7);
+  box-shadow: 0 0 10px rgba(74, 201, 162, 0.28);
+}
+
+html[data-theme="mint"] #ai-web-mode-toggle {
+  display: none;
+}
+
+html[data-theme="mint"] .ai-mode-seg {
+  border-radius: 999px;
+  border: 1px solid rgba(18, 58, 49, 0.12);
+  padding: 2px 10px;
+  min-width: 40px;
+  height: 22px;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  background: #ffffff;
+  color: var(--cl-text-main);
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.03);
+  transition: 0.15s ease;
+}
+
+html[data-theme="mint"] .ai-mode-seg:hover {
+  background: #f2fffb;
+}
+
+html[data-theme="mint"] .ai-mode-seg.active {
+  background: #d8f3e8;
+  color: var(--cl-text-main);
+  border-color: rgba(22, 165, 128, 0.9);
+}
+
+html[data-theme="mint"] .ai-mode-label {
+  font-size: 10px;
+  color: var(--cl-text-muted);
+  padding-right: 6px;
+}

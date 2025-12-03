@@ -1,0 +1,501 @@
+/* =========================================
+   Mindra Light -  Emerald Circuit Theme
+   ======================================= */
+
+/* ---------- テーマ変数 ---------- */
+html[data-theme="emerald"] {
+  --mc-bg: radial-gradient(circle at 10% 0%,
+      #0e2c2a 0%, #040b10 40%, #020406 100%);
+  --mc-panel: rgba(8, 22, 24, 0.78);
+  --mc-panel-soft: rgba(9, 28, 30, 0.78);
+  --mc-panel-border: rgba(178, 255, 230, 0.25);
+  --mc-panel-border-strong: rgba(178, 255, 230, 0.6);
+
+  --mc-accent: #10a37f;
+  --mc-accent-soft: #1fd1a0;
+  --mc-accent-glow: rgba(16, 163, 127, 0.7);
+
+  --mc-text-main: #eafaf5;
+  --mc-text-muted: #9ab8ae;
+
+  --mc-shadow-soft: 0 18px 40px rgba(0, 0, 0, 0.7);
+}
+
+/* ---------- 全体背景 ---------- */
+html[data-theme="emerald"] body,
+html[data-theme="emerald"] #root {
+  background: var(--mc-bg);
+  color: var(--mc-text-main);
+}
+
+/* ---------- タイトルバー ---------- */
+html[data-theme="emerald"] #window-titlebar {
+  background: linear-gradient(
+    90deg,
+    rgba(9, 32, 34, 0.9),
+    rgba(4, 12, 16, 0.96)
+  );
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.6);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+}
+
+html[data-theme="emerald"] .window-title-text {
+  color: #f2fffb;
+}
+
+html[data-theme="emerald"] .window-btn {
+  color: #d4e7e1;
+}
+
+html[data-theme="emerald"] .window-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme="emerald"] .window-btn.close:hover {
+  background: #ff5c5c;
+  color: #ffffff;
+}
+
+/* ---------- 左サイドバー（ガラスカード） ---------- */
+html[data-theme="emerald"] #sidebar {
+  background: var(--mc-panel);
+  backdrop-filter: blur(22px);
+  border-right: 1px solid rgba(0, 0, 0, 0.7);
+  box-shadow: var(--mc-shadow-soft);
+  color: var(--mc-text-main);
+}
+
+html[data-theme="emerald"] #sidebar .sidebar-section-divider {
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(178, 255, 230, 0.5),
+    transparent);
+  height: 1px;
+}
+
+html[data-theme="emerald"] #sidebar .sidebar-title {
+  color: #f4fffb;
+  letter-spacing: 0.04em;
+}
+
+/* ---------- 左上 4 ボタン（ネオングリッド風） ---------- */
+html[data-theme="emerald"] .sidebar-icon-btn {
+  position: relative;
+  background: radial-gradient(circle at 20% 0%,
+      rgba(60, 255, 210, 0.35),
+      rgba(7, 22, 24, 0.95));
+  border-radius: 12px;
+  border: 1px solid var(--mc-panel-border-strong) !important;
+  color: #eafff8;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.85),
+    0 0 18px rgba(16, 163, 127, 0.7);
+  overflow: hidden;
+  transition: 0.16s ease;
+}
+
+/* 内側にうっすら回路ライン */
+html[data-theme="emerald"] .sidebar-icon-btn::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: inherit;
+  background-image:
+    linear-gradient(
+      135deg,
+      rgba(200, 255, 235, 0.2) 1px,
+      transparent 1px
+    );
+  background-size: 6px 6px;
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+html[data-theme="emerald"] .sidebar-icon-btn:hover:not(.active) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.85),
+    0 0 24px rgba(16, 163, 127, 0.9);
+}
+
+html[data-theme="emerald"] .sidebar-icon-btn.active {
+  background: radial-gradient(circle at 20% 0%,
+      rgba(85, 255, 220, 0.7),
+      rgba(6, 30, 30, 0.98));
+  color: #ffffff;
+}
+
+/* ---------- URL 入力欄 ---------- */
+html[data-theme="emerald"] #sidebar-url-input {
+  background: rgba(3, 12, 13, 0.9) !important;
+  border: 1px solid rgba(175, 255, 233, 0.7) !important;
+  border-radius: 9px;
+  color: var(--mc-text-main) !important;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.9),
+    0 0 12px rgba(16, 163, 127, 0.55);
+}
+
+html[data-theme="emerald"] #sidebar-url-input::placeholder {
+  color: rgba(188, 219, 210, 0.7);
+}
+
+html[data-theme="emerald"] #sidebar-url-input:focus {
+  border-color: var(--mc-accent-soft) !important;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.9),
+    0 0 18px var(--mc-accent-glow);
+  outline: none;
+}
+
+html[data-theme="emerald"] .urlstar-btn {
+  color: #44e6c0;
+}
+html[data-theme="emerald"] .urlstar-btn.is-bookmarked {
+  color: #1fd1a0;
+  text-shadow: 0 0 8px rgba(30,200,160,0.8);
+}
+
+html[data-theme="emerald"] .download-status-btn svg {
+  color: #1fd1a0 !important;
+}
+
+/* ---------- New Tab ボタン ---------- */
+html[data-theme="emerald"] #btn-new-tab {
+  color: var(--mc-text-main);
+  background: rgba(3, 11, 12, 0.75);
+  border-radius: 8px;
+  border: 1px solid rgba(178, 255, 230, 0.3);
+}
+
+html[data-theme="emerald"] #btn-new-tab:hover {
+  background: rgba(8, 26, 28, 0.9);
+}
+
+/* ---------- Split View ボタン ---------- */
+html[data-theme="emerald"] #btn-split-view {
+  width: 100%;
+  height: 30px;
+  justify-content: flex-start;
+  padding: 4px 8px;
+  border-radius: 9px;
+
+  background: rgba(5, 18, 20, 0.85);
+  border: 1px solid rgba(140, 220, 200, 0.5);
+  color: var(--mc-text-main);
+  transition: 0.16s ease;
+}
+
+html[data-theme="emerald"] #btn-split-view:hover {
+  background: rgba(10, 30, 32, 0.9);
+}
+
+html[data-theme="emerald"] #btn-split-view.active {
+  background: radial-gradient(circle at 0% 50%,
+      rgba(40, 200, 165, 0.65),
+      rgba(3, 18, 20, 0.98));
+  border-color: rgba(190, 255, 235, 0.9);
+  color: #ffffff;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.9),
+    0 0 18px rgba(33, 135, 103, 0.85);
+}
+
+/* ---------- タブ一覧 ---------- */
+html[data-theme="emerald"] .tab-item {
+  background: transparent;
+  color: var(--mc-text-main);
+}
+
+html[data-theme="emerald"] .tab-item:hover {
+  background: rgba(6, 22, 24, 0.75);
+}
+
+html[data-theme="emerald"] .tab-item.active {
+  background: linear-gradient(
+    135deg,
+    rgba(22, 66, 60, 0.95),
+    rgba(8, 29, 30, 0.98)
+  );
+  border: 1px solid rgba(150, 245, 219, 0.9);
+  color: #ffffff;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.9),
+    0 0 16px rgba(33, 135, 103, 0.9);
+}
+
+html[data-theme="emerald"] .tab-profile-dot {
+  background: #3bffd0;
+  border-color: rgba(0, 0, 0, 0.7);
+}
+
+html[data-theme="emerald"] .tab-close-btn {
+  color: #a7c5bc;
+}
+
+html[data-theme="emerald"] .tab-close-btn:hover {
+  color: #ff9db0;
+}
+
+/* ---------- 右サイドバー（AIエリアパネル） ---------- */
+html[data-theme="emerald"] #right-sidebar {
+  background: var(--mc-panel-soft);
+  backdrop-filter: blur(28px);
+  border-left: 1px solid rgba(0, 0, 0, 0.8);
+  box-shadow: var(--mc-shadow-soft);
+  color: var(--mc-text-main);
+}
+
+/* ---------- AI 入力エリア & 送信ボタン ---------- */
+html[data-theme="emerald"] #ai-input {
+  background: rgba(4, 14, 16, 0.9);
+  border: 1px solid rgba(190, 255, 238, 0.4);
+  border-radius: 999px;
+  color: var(--mc-text-main);
+  padding-left: 14px;
+  padding-right: 14px;
+}
+
+html[data-theme="emerald"] #ai-input::placeholder {
+  color: var(--mc-text-muted);
+}
+
+html[data-theme="emerald"] #ai-send {
+  background: radial-gradient(circle at 0% 0%,
+      #ffffff,
+      #b1ffee 40%,
+      #37c89d 100%);
+  color: #04201a;
+  border-radius: 999px;
+  border: none;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.9),
+    0 0 18px rgba(16, 163, 127, 0.9);
+}
+
+/* ---------- AI 再チェックボタン（右下の大きいボタン想定） ---------- */
+[data-theme="emerald"] #ai-recheck-btn {
+  position: relative;
+  padding: 11px 30px;
+  border-radius: 999px;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: center;
+
+  background: linear-gradient(145deg, #10a37f, #1fd1a0);
+  color: #041513;
+
+  box-shadow:
+    0 18px 35px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(190, 255, 238, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="emerald"] #ai-recheck-btn::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  top: 4px;
+  height: 48%;
+  border-radius: 999px;
+  background: linear-gradient(
+    rgba(255, 255, 255, 0.7),
+    transparent
+  );
+  pointer-events: none;
+}
+
+[data-theme="emerald"] #ai-recheck-btn:hover {
+  background: linear-gradient(145deg, #18b58c, #2bd9a8);
+  transform: translateY(-1px);
+}
+
+[data-theme="emerald"] #ai-recheck-btn:active {
+  transform: translateY(0);
+  box-shadow:
+    0 10px 20px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(190, 255, 238, 0.7),
+    inset 0 2px 4px rgba(0, 0, 0, 0.55);
+}
+
+/* ---------- チャットバブル ---------- */
+/* Assistant：明るいミントガラス */
+html[data-theme="emerald"] .ai-chat-bubble.assistant {
+  background: linear-gradient(
+    135deg,
+    rgba(190, 255, 238, 0.28),
+    rgba(80, 225, 185, 0.45),
+    rgba(18, 70, 60, 0.9)
+  );
+  color: #f4fffb;
+  border: 1px solid rgba(160, 255, 225, 0.85);
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.8),
+    0 0 16px rgba(16, 163, 127, 0.9);
+  backdrop-filter: blur(20px);
+}
+
+/* User：少し深いミントで統一 */
+html[data-theme="emerald"] .ai-chat-bubble.user {
+  background: linear-gradient(
+    135deg,
+    rgba(10, 35, 36, 0.95),
+    rgba(6, 23, 27, 0.96)
+  );
+  color: #e8faf5;
+  border: 1px solid rgba(130, 230, 205, 0.8);
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.75),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* ---------- ページ内検索バー ---------- */
+html[data-theme="emerald"] #find-bar {
+  background: rgba(5, 18, 20, 0.96);
+  backdrop-filter: blur(18px);
+}
+
+html[data-theme="emerald"] #find-input {
+  background: rgba(2, 10, 12, 0.9);
+  border-color: rgba(190, 255, 238, 0.6);
+  color: var(--mc-text-main);
+}
+
+html[data-theme="emerald"] #find-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* ---------- コンテキストメニュー ---------- */
+[data-theme="emerald"] .content-menu {
+  background: rgba(5, 16, 18, 0.96);
+  color: var(--mc-text-main);
+  border-color: rgba(0, 0, 0, 0.85);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(20px);
+}
+
+[data-theme="emerald"] .content-menu-item {
+  padding: 6px 12px;
+}
+
+[data-theme="emerald"] .content-menu-item:hover {
+  background: rgba(54, 162, 135, 0.35);
+}
+
+/* ---------- 設定オーバーレイ & パネル ---------- */
+html[data-theme="emerald"] #settings-overlay {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+html[data-theme="emerald"] #settings-panel {
+  background: rgba(7, 20, 22, 0.96);
+  border-radius: 16px;
+  border: 1px solid rgba(160, 255, 225, 0.6);
+  color: var(--mc-text-main);
+  box-shadow: 0 20px 46px rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(26px);
+}
+
+/* 設定ボタン */
+html[data-theme="emerald"] .settings-button {
+  background: rgba(2, 13, 15, 0.9);
+  color: var(--mc-text-main);
+  border-radius: 999px;
+  border: 1px solid rgba(170, 245, 220, 0.5);
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: 0.16s ease;
+}
+
+html[data-theme="emerald"] .settings-button:hover {
+  background: rgba(10, 32, 34, 0.96);
+  box-shadow: 0 0 14px rgba(74, 201, 162, 0.8);
+}
+
+html[data-theme="emerald"] #settings-panel-close {
+  color: #dfe4ff;
+}
+
+/* セレクト & インライン入力 */
+html[data-theme="emerald"] .settings-select,
+html[data-theme="emerald"] select {
+  background: rgba(2, 10, 12, 0.96);
+  color: var(--mc-text-main);
+  border-radius: 8px;
+  border: 1px solid rgba(170, 245, 220, 0.7);
+  padding: 6px 10px;
+}
+
+html[data-theme="emerald"] .settings-inline input {
+  background: rgba(1, 9, 10, 0.96);
+  color: var(--mc-text-main);
+  border-radius: 8px;
+  border: 1px solid rgba(160, 240, 215, 0.7);
+  padding: 6px 8px;
+}
+
+/* ---------- AIモードトグル ---------- */
+html[data-theme="emerald"] #ai-mode-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 4px 6px 0;
+}
+
+html[data-theme="emerald"] .ai-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: rgba(3, 11, 12, 0.96);
+  border: 1px solid rgba(160, 255, 225, 0.7);
+  box-shadow: 0 0 16px rgba(74, 201, 162, 0.8);
+}
+
+html[data-theme="emerald"] #ai-web-mode-toggle {
+  display: none;
+}
+
+html[data-theme="emerald"] .ai-mode-seg {
+  border-radius: 999px;
+  border: 1px solid rgba(18, 58, 49, 0.95);
+  padding: 2px 10px;
+  min-width: 40px;
+  height: 22px;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  background: rgba(3, 10, 11, 0.96);
+  color: var(--mc-text-main);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.7);
+  transition: 0.15s ease;
+}
+
+html[data-theme="emerald"] .ai-mode-seg:hover {
+  background: rgba(7, 22, 24, 0.98);
+}
+
+html[data-theme="emerald"] .ai-mode-seg.active {
+  background: radial-gradient(
+    circle at 50% 0%,
+    rgba(70, 230, 190, 0.7),
+    rgba(7, 27, 28, 0.98)
+  );
+  color: #f6fffd;
+  border-color: rgba(178, 255, 230, 0.95);
+  box-shadow:
+    0 0 0 1px rgba(2, 7, 9, 0.95),
+    0 0 16px rgba(74, 201, 162, 0.9);
+}
+
+html[data-theme="emerald"] .ai-mode-label {
+  font-size: 10px;
+  color: var(--mc-text-muted);
+  padding-right: 6px;
+}

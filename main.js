@@ -1,3 +1,4 @@
+process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
 const { app, BrowserWindow, ipcMain, Menu, shell } = require("electron");
 Menu.setApplicationMenu(null);
 const path = require("path");
@@ -7,7 +8,7 @@ const https = require("https"); // EasyList ダウンロード用
 const AdBlockClient = require("adblock-rs");
 const { initAIBackend } = require("./main/ai-ollama.js");
 const { initHistory, addEntry, getRecent } = require("./main/history-store.js");
-const logger = require("./main/logger.js"); // ★ 追加: ロガー
+const logger = require("./main/logger.js");
 
 // YouTube の広告をどこまで殺すか
 // true にすると広告ストリームもブロック（壊れることもある）
@@ -24,6 +25,9 @@ if (!app.isPackaged) {
 
 // ロガー初期化
 logger.initLogger(app);
+
+// ★ 90 日以上前のログを自動で削除
+logger.removeOldLogs(logger.getLogsDir(), 90);
 
 let mainWindow = null;
 
@@ -328,9 +332,7 @@ async function ensureFilterFileFresh(url, localPath, label) {
       return;
     }
 
-    console.log(`[adblock] downloading ${label} from ${url}`);
     await downloadTextToFile(url, localPath);
-    console.log(`[adblock] downloaded ${label}`);
   } catch (e) {
     console.error(`[adblock] failed to download ${label}:`, e);
   }
@@ -430,7 +432,6 @@ async function initAdblockForSession(session) {
           if (isYouTubeHost(hostname)) {
             if (electronType !== "mainFrame" && electronType !== "subFrame") {
               if (isYouTubeAdUrl(url, hostname)) {
-                console.log("[yt-adblock] BLOCK API", url);
                 return callback({ cancel: true });
               }
             }
@@ -444,7 +445,6 @@ async function initAdblockForSession(session) {
           if (hostname && hostname.toLowerCase().includes("googlevideo.com")) {
             if (YT_AGGRESSIVE_ADBLOCK && isYouTubeAdVideo(url)) {
               // ★攻撃的モードのときだけ広告ストリームを殺す
-              console.log("[yt-adblock] BLOCK STREAM", url);
               return callback({ cancel: true });
             }
 
@@ -498,12 +498,6 @@ async function initAdblockForSession(session) {
           }
 
           if (shouldBlock) {
-            console.log("[adblock] BLOCK", {
-              url: requestUrl,
-              sourceUrl,
-              type: requestType,
-              filter: result && result.filter,
-            });
             return callback({ cancel: true });
           }
 
@@ -515,7 +509,6 @@ async function initAdblockForSession(session) {
       }
     );
 
-    console.log("[adblock] engine initialized with", rules.length, "rules");
   } catch (e) {
     console.error("[adblock] failed to init:", e);
     adblockEngine = null;
@@ -778,6 +771,28 @@ app.on("web-contents-created", (event, contents) => {
       });
     }
 
+    contents.on("console-message", (event2, level, message, line, sourceId) => {
+      // level: 0=log, 1=warn, 2=error
+      try {
+        if (level === 1) {
+          logger.logWarn("renderer-console", {
+            message,
+            line,
+            source: sourceId,
+          });
+        } else if (level === 2) {
+          logger.logError("renderer-console", {
+            message,
+            line,
+            source: sourceId,
+          });
+        }
+        // console.log(level=0) はログに出さない
+      } catch (e) {
+        console.error("[logger] failed to log console-message:", e);
+      }
+    });
+
     // YouTube の DOM 広告も隠す（通常ウィンドウ／ポップアップ共通）
     contents.on("did-finish-load", () => {
       try {
@@ -793,6 +808,7 @@ app.on("web-contents-created", (event, contents) => {
     });
   }
 });
+
 
 // ===== ウィンドウ生成 =====
 async function createWindow(profileIdArg) {
@@ -840,7 +856,10 @@ async function createWindow(profileIdArg) {
         `--mindra-env=${isDev ? "dev" : "prod"}`,
         `--mindra-config=${configB64}`,
       ],
-    },
+    webSecurity: true,
+    enableRemoteModule: false,
+    devTools: isDev
+   },
   });
 
   if (!mainWindow) {
@@ -885,7 +904,7 @@ async function createWindow(profileIdArg) {
   });
 
   if (isDev) {
-    win.webContents.openDevTools({ mode: "detach" });
+    // debug win.webContents.openDevTools({ mode: "detach" });
   }
 
   win.webContents.setUserAgent(
@@ -967,7 +986,6 @@ ipcMain.on("settings:update-general", (_event, flags) => {
     ...generalSettingsFlags,
     ...flags,
   };
-  console.log("[settings] general flags updated:", generalSettingsFlags);
 });
 
 // 一般設定フラグ
@@ -977,7 +995,6 @@ ipcMain.on("settings:update-general", (_event, flags) => {
     ...generalSettingsFlags,
     ...flags,
   };
-  console.log("[settings] general flags updated:", generalSettingsFlags);
 });
 
 // プロファイルショートカット作成
@@ -1045,8 +1062,6 @@ open -na "${appPath}" --args --mindra-profile=${profileId}
       shortcutPath,
     });
     writeProfilesMeta(meta);
-
-    console.log("[profile] created shortcut:", profileId, shortcutPath);
 
     return { ok: true, profileId, shortcutPath };
   } catch (e) {
@@ -1121,7 +1136,6 @@ ipcMain.handle("profile:delete", async (_event, profileId) => {
     meta.profiles = profiles.filter((p) => p.id !== profileId);
     writeProfilesMeta(meta);
 
-    console.log("[profile] deleted:", profileId);
     return { ok: true };
   } catch (e) {
     console.error("[profile] delete error:", e);

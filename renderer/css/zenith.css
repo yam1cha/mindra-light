@@ -1,0 +1,505 @@
+/* =========================================
+   Mindra Light - Zenith Theme (Deep Black & Gold)
+   ========================================= */
+
+
+/* =========================================
+ * テーマ変数
+ * =======================================*/
+html[data-theme="zenith"] {
+  /* メインカラー: ディープマットブラック */
+  --bg: #0E0E0E; 
+  --side-bg: #151515;
+  --ai-bg: #1B1B1B;
+
+  /* アクセントカラー: サテンゴールド */
+  --accent: #B89A60; 
+  --accent-light: #D4B67E;
+
+  /* 文字色 */
+  --tab-fg: #F0F0F0;
+  --text-primary: #E0E0E0;
+  
+  /* ボーダーと影: 最小限の光沢 */
+  --border-color: rgba(184, 154, 96, 0.2); 
+  --shadow-color: rgba(0, 0, 0, 0.5); 
+  
+  /* ホバー色: 深みのあるダークグレー */
+  --hover-bg: #282828;
+  --active-bg: #404040;
+}
+
+
+/* =========================================
+ * 全体背景
+ * =======================================*/
+html[data-theme="zenith"] body,
+html[data-theme="zenith"] #root {
+  background: var(--bg);
+}
+
+/* =========================================
+ * タイトルバー
+ * =======================================*/
+html[data-theme="zenith"] #window-titlebar {
+  background: var(--side-bg);
+  border-bottom-color: var(--border-color);
+}
+
+html[data-theme="zenith"] .window-title-text {
+  color: var(--text-primary);
+}
+
+html[data-theme="zenith"] .window-btn {
+  color: var(--text-primary);
+}
+
+html[data-theme="zenith"] .window-btn:hover {
+  background: var(--hover-bg);
+}
+
+html[data-theme="zenith"] .window-btn.close:hover {
+  background: #C73838;
+  color: #ffffff;
+}
+
+
+/* =========================================
+ * 左サイドバー
+ * =======================================*/
+html[data-theme="zenith"] #sidebar {
+  background: var(--side-bg);
+  border-right-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+html[data-theme="zenith"] #sidebar .sidebar-section-divider {
+  background: var(--accent);
+  opacity: 0.15;
+}
+
+html[data-theme="zenith"] #sidebar .sidebar-title {
+  color: var(--accent-light);
+}
+
+
+/* =========================================
+ * 左上 4 ボタン
+ * =======================================*/
+
+/* OFF 共通 */
+html[data-theme="zenith"] .sidebar-icon-btn {
+  background: var(--bg) !important;
+  border-radius: 6px; /* cool_old.cssに合わせて6pxに戻す */
+  border: 1px solid rgba(184, 154, 96, 0.45) !important;
+  box-shadow: 0 0 6px rgba(184, 154, 96, 0.20);
+  color: var(--accent);
+}
+
+/* OFF ホバー */
+html[data-theme="zenith"] .sidebar-icon-btn:hover:not(.active) {
+  background: var(--hover-bg) !important;
+}
+
+/* ON（active） */
+html[data-theme="zenith"] .sidebar-icon-btn.active {
+  background: var(--accent) !important;
+  border-color: var(--accent-light) !important;
+  color: var(--bg) !important;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.7),
+    0 0 8px rgba(184, 154, 96, 0.55);
+}
+
+
+/* =========================================
+ * URL入力欄
+ * =======================================*/
+html[data-theme="zenith"] #sidebar-url-input {
+  background: #000000 !important;
+  border: 1px solid var(--accent) !important;
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="zenith"] #sidebar-url-input::placeholder {
+  color: #707070;
+}
+
+html[data-theme="zenith"] #sidebar-url-input:focus {
+  border-color: var(--accent-light);
+  box-shadow: 0 0 0 2px rgba(184, 154, 96, 0.4);
+  outline: none;
+}
+
+html[data-theme="zenith"] .urlstar-btn {
+  color: #c3a873;
+}
+html[data-theme="zenith"] .urlstar-btn.is-bookmarked {
+  color: #e7c987;
+  text-shadow: 0 0 6px rgba(230, 200, 120, 0.7);
+}
+
+html[data-theme="zenith"] .download-status-btn svg {
+  color: #B89A60;
+}
+
+/* =========================================
+ * New Tab ボタン
+ * =======================================*/
+html[data-theme="zenith"] #btn-new-tab {
+  color: var(--tab-fg);
+  background: rgba(184, 154, 96, 0.1); /* ゴールドの光沢 */
+  border-radius: 6px;
+}
+
+html[data-theme="zenith"] #btn-new-tab:hover {
+  background: rgba(184, 154, 96, 0.2);
+}
+
+
+/* =========================================
+ * Split View ボタン
+ * =======================================*/
+html[data-theme="zenith"] #btn-split-view {
+  width: 100%;
+  height: 30px;
+  justify-content: flex-start;
+  padding: 4px 8px;
+  border-radius: 6px;
+
+  background: var(--side-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  opacity: 0.9;
+  transition: 0.15s ease;
+}
+
+html[data-theme="zenith"] #btn-split-view:hover {
+  opacity: 1;
+  background: var(--hover-bg);
+}
+
+/* Split 中（アクティブ） */
+html[data-theme="zenith"] #btn-split-view.active {
+  background: var(--active-bg);
+  color: var(--accent-light);
+  border: 1px solid var(--accent);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.7),
+    0 0 6px rgba(184, 154, 96, 0.35);
+}
+
+
+/* =========================================
+ * タブ一覧
+ * =======================================*/
+html[data-theme="zenith"] .tab-item {
+  color: var(--tab-fg);
+}
+
+html[data-theme="zenith"] .tab-item:hover {
+  background: var(--hover-bg);
+}
+
+/* アクティブタブ */
+html[data-theme="zenith"] .tab-item.active {
+  background: var(--active-bg);
+  color: var(--accent-light);
+  border: 1px solid var(--accent);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.7),
+    0 0 6px rgba(184, 154, 96, 0.35);
+}
+
+html[data-theme="zenith"] .tab-profile-dot {
+  background: var(--accent);
+  border-color: rgba(0, 0, 0, 0.6);
+}
+
+html[data-theme="zenith"] .tab-close-btn {
+  color: #888888;
+}
+
+html[data-theme="zenith"] .tab-close-btn:hover {
+  color: #C73838;
+}
+
+
+/* =========================================
+ * 右サイドバー（AIエリアの背景）
+ * =======================================*/
+html[data-theme="zenith"] #right-sidebar {
+  background: var(--ai-bg);
+  color: var(--text-primary);
+  border-left-color: var(--border-color);
+}
+
+
+/* =========================================
+ * AI入力エリア & 再チェックボタン
+ * （右サイドバー下部）
+ * =======================================*/
+html[data-theme="zenith"] #ai-input {
+  background: #000000;
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+html[data-theme="zenith"] #ai-input::placeholder {
+  color: #707070;
+}
+
+html[data-theme="zenith"] #ai-send {
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  box-shadow: 0 0 8px rgba(184, 154, 96, 0.5);
+}
+
+/* AI再チェックボタン */
+[data-theme="zenith"] #ai-recheck-btn {
+  position: relative;
+  padding: 10px 28px;
+  border-radius: 999px;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: center;
+
+  background: linear-gradient(145deg, #B89A60, #D4B67E);
+  color: var(--bg);
+
+  box-shadow:
+    0 10px 20px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+/* 上側のハイライト（ツヤ） */
+[data-theme="zenith"] #ai-recheck-btn::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 3px;
+  height: 50%;
+  border-radius: 999px;
+  background: linear-gradient(
+    rgba(255, 255, 255, 0.55),
+    transparent
+  );
+  pointer-events: none;
+}
+
+/* ホバー：ふわっと浮く */
+[data-theme="zenith"] #ai-recheck-btn:hover {
+  background: linear-gradient(145deg, #C7AB74, #E3C58D);
+  transform: translateY(-1px);
+  box-shadow:
+    0 14px 26px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+/* 押されたとき：少し沈む */
+[data-theme="zenith"] #ai-recheck-btn:active {
+  transform: translateY(1px);
+  box-shadow:
+    0 6px 12px rgba(0, 0, 0, 0.4),
+    inset 0 2px 4px rgba(0, 0, 0, 0.45);
+}
+
+
+/* =========================================
+ * AIチャットバブル（中央の吹き出し）
+ * =======================================*/
+
+/* Assistant */
+html[data-theme="zenith"] .ai-chat-bubble.assistant {
+  background: var(--active-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(0px); /* Zenithではブラーを無効化 */
+}
+
+/* User */
+html[data-theme="zenith"] .ai-chat-bubble.user {
+  background: var(--side-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--accent);
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.55),
+    inset 0 1px 1px rgba(184, 154, 96, 0.35);
+}
+
+
+/* =========================================
+ * ページ内検索バー
+ * =======================================*/
+html[data-theme="zenith"] #find-bar {
+  background: rgba(0, 0, 0, 0.96);
+}
+
+html[data-theme="zenith"] #find-input {
+  background: #000000;
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+html[data-theme="zenith"] #find-close:hover {
+  background: var(--hover-bg);
+}
+
+
+/* =========================================
+ * コンテキストメニュー
+ * =======================================*/
+[data-theme="zenith"] .content-menu {
+  background: var(--ai-bg);
+  color: var(--text-primary);
+  border-color: rgba(0, 0, 0, 0.6);
+  box-shadow: 0 10px 30px var(--shadow-color);
+}
+
+[data-theme="zenith"] .content-menu-item {
+  padding: 6px 12px;
+}
+
+[data-theme="zenith"] .content-menu-item:hover {
+  background: rgba(184, 154, 96, 0.2);
+}
+
+
+/* =========================================
+ * 設定オーバーレイ & パネル
+ * =======================================*/
+html[data-theme="zenith"] #settings-overlay {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+html[data-theme="zenith"] #settings-panel {
+  background: var(--ai-bg);
+  border: 1px solid var(--accent);
+  color: var(--text-primary);
+  box-shadow: 0 6px 20px var(--shadow-color);
+}
+
+
+/* --- 設定：共通ボタン --- */
+html[data-theme="zenith"] .settings-button {
+  background: linear-gradient(135deg, #B89A60, #D4B67E);
+  color: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: 0.15s ease;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+html[data-theme="zenith"] .settings-button:hover {
+  background: linear-gradient(135deg, #C7AB74, #E3C58D);
+  box-shadow: 0 0 8px rgba(184, 154, 96, 0.6);
+}
+
+html[data-theme="zenith"] .settings-button:active {
+  transform: translateY(1px);
+}
+
+html[data-theme="zenith"] #settings-panel-close {
+  color: var(--text-primary);
+}
+
+/* --- 設定：セレクトボックス --- */
+html[data-theme="zenith"] .settings-select,
+html[data-theme="zenith"] select {
+  background: #000000;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+
+/* --- 設定：インライン入力 --- */
+html[data-theme="zenith"] .settings-inline input {
+  background: #000000;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+html[data-theme="zenith"] .settings-inline button {
+  margin-left: 6px;
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+
+/* =========================================
+ * AIモード セグメントトグル
+ * （右サイドバー上部ヘッダー）
+ * =======================================*/
+html[data-theme="zenith"] #ai-mode-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 4px 6px 0;
+}
+
+html[data-theme="zenith"] .ai-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--side-bg);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 0 6px rgba(184, 154, 96, 0.25);
+}
+
+html[data-theme="zenith"] #ai-web-mode-toggle {
+  display: none;
+}
+
+html[data-theme="zenith"] .ai-mode-seg {
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.8);
+  padding: 2px 10px;
+  min-width: 40px;
+  height: 22px;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  background: var(--bg);
+  color: var(--tab-fg);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.7);
+  transition: 0.15s ease;
+}
+
+html[data-theme="zenith"] .ai-mode-seg:hover {
+  background: var(--hover-bg);
+}
+
+html[data-theme="zenith"] .ai-mode-seg.active {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent-light);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.9),
+    0 0 8px rgba(184, 154, 96, 0.7);
+}
+
+html[data-theme="zenith"] .ai-mode-label {
+  font-size: 10px;
+  color: var(--accent-light);
+  opacity: 0.85;
+  padding-right: 6px;
+}

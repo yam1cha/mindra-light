@@ -10,7 +10,6 @@
         ? window.mindraNaturalCommand.parse(rawText)
         : { type: "chat", raw: rawText };
 
-    console.log("DISPATCH CMD:", cmd);
 
     try {
       // ===== 要約 =====

@@ -548,39 +548,67 @@ function getYouTubeDomAdblockScript() {
   `;
 }
 
-// ===== ウィンドウ状態保存 =====
-async function loadWindowState() {
+// =====================================================
+// ウインドウ位置・サイズ（プロファイル別）
+// =====================================================
+async function loadWindowState(profileId) {
+  const pid = profileId || "profile-1";
+
   try {
-    const text = await fs.readFile(windowStatePath, "utf8");
-    const state = JSON.parse(text);
-    if (!state || typeof state !== "object") return {};
-    return state;
-  } catch {
-    return {};
+    const raw = await fs.readFile(windowStatePath, "utf8");
+    const all = JSON.parse(raw) || {};
+
+    // プロファイルごとの状態を持つ形にする
+    const state = all[pid] || all["default"] || {};
+
+    return {
+      width: typeof state.width === "number" ? state.width : 1280,
+      height: typeof state.height === "number" ? state.height : 800,
+      x: typeof state.x === "number" ? state.x : undefined,
+      y: typeof state.y === "number" ? state.y : undefined,
+      isMaximized: !!state.isMaximized,
+    };
+  } catch (e) {
+    // まだファイルがない / 壊れてるときのデフォルト
+    return {
+      width: 1280,
+      height: 800,
+      x: undefined,
+      y: undefined,
+      isMaximized: false,
+    };
   }
 }
 
-async function saveWindowState(win) {
+async function saveWindowState(win, profileId) {
+  if (!win) return;
+  const pid = profileId || "profile-1";
+
+  const bounds = win.getBounds();
+  const isMaximized = win.isMaximized();
+
+  const nextState = {
+    width: bounds.width,
+    height: bounds.height,
+    x: bounds.x,
+    y: bounds.y,
+    isMaximized,
+  };
+
+  let all = {};
   try {
-    if (!win || win.isDestroyed()) return;
+    const raw = await fs.readFile(windowStatePath, "utf8");
+    all = JSON.parse(raw) || {};
+  } catch (e) {
+    all = {};
+  }
 
-    const bounds = win.getBounds();
-    const state = {
-      width: bounds.width,
-      height: bounds.height,
-      x: bounds.x,
-      y: bounds.y,
-      isMaximized: win.isMaximized(),
-      isFullScreen: win.isFullScreen(),
-    };
+  all[pid] = nextState;
 
-    await fs.writeFile(
-      windowStatePath,
-      JSON.stringify(state, null, 2),
-      "utf8"
-    );
-  } catch (err) {
-    console.error("[window-state] save error:", err);
+  try {
+    await fs.writeFile(windowStatePath, JSON.stringify(all, null, 2), "utf8");
+  } catch (e) {
+    console.error("[window-state] save error:", e);
   }
 }
 
@@ -768,7 +796,13 @@ app.on("web-contents-created", (event, contents) => {
 
 // ===== ウィンドウ生成 =====
 async function createWindow(profileIdArg) {
-  const winState = await loadWindowState();
+  // 起動プロファイルID決定
+  const profileId =
+    (typeof profileIdArg === "string" && profileIdArg) ||
+    extractProfileIdFromArgv(process.argv) ||
+    "profile-1";
+
+  const winState = await loadWindowState(profileId);  // ここでプロファイル渡す
 
   let x, y;
   if (!winState.isMaximized) {
@@ -778,12 +812,6 @@ async function createWindow(profileIdArg) {
 
   const isDev = !app.isPackaged;
   const configObj = loadConfigInMain(isDev);
-
-  // 起動プロファイルID決定
-  const profileId =
-    (typeof profileIdArg === "string" && profileIdArg) ||
-    extractProfileIdFromArgv(process.argv) ||
-    "profile-1";
 
   // renderer 側に渡す config にプロファイルIDを埋め込む
   configObj.profileId = profileId;
@@ -818,7 +846,7 @@ async function createWindow(profileIdArg) {
   if (!mainWindow) {
     mainWindow = win;
 
-    const saveBounds = () => saveWindowState(win);
+    const saveBounds = () => saveWindowState(win, profileId); // プロファイル渡す
     win.on("resize", saveBounds);
     win.on("move", saveBounds);
     win.on("close", saveBounds);

@@ -216,7 +216,7 @@ function serializeTabsState() {
   return {
     tabs: tabs.map((t) => ({
       url: t.url,
-      profileId: t.profileId || DEFAULT_PROFILE_NO,
+      profileId: t.profileId || 1,
       // タブごとの履歴も保存
       historyEntries: Array.isArray(t.historyEntries)
         ? t.historyEntries
@@ -306,7 +306,7 @@ function loadTabsState() {
         id,
         url,
         title,
-        profileId: t.profileId || DEFAULT_PROFILE_NO,
+        profileId: t.profileId || 1,
         webviewId: null,
         historyEntries,
         historyIndex,
@@ -944,7 +944,7 @@ function createTab(url = "https://www.google.com", activate = true) {
     id,
     url,
     title,
-    profileId: DEFAULT_PROFILE_NO,
+    profileId: 1,
     webviewId: null,
     historyEntries: [],
     historyIndex: -1,

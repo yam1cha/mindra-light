@@ -124,19 +124,46 @@ function mapRequestTypeForAdblock(electronType) {
   }
 }
 
-// ===== プロファイルメタの読み書き =====
+// ===== プロファイルメタ管理 =====
 function readProfilesMeta() {
   try {
     const raw = fsSync.readFileSync(profilesMetaPath, "utf8");
-    const meta = JSON.parse(raw);
-    if (!meta || typeof meta !== "object") {
-      return { lastId: 0, profiles: [] };
+    const meta = JSON.parse(raw) || {};
+
+    if (typeof meta.lastId !== "number") {
+      // 最初の追加プロファイルは profile-2 にしたいので 1 を既定値にする
+      meta.lastId = 1;
     }
-    if (typeof meta.lastId !== "number") meta.lastId = 0;
-    if (!Array.isArray(meta.profiles)) meta.profiles = [];
+    if (!Array.isArray(meta.profiles)) {
+      meta.profiles = [];
+    }
+
+    // デフォルトプロファイル profile-1 はメタ管理から除外して扱う
+    meta.profiles = meta.profiles.filter(
+      (p) => p && typeof p.id === "string" && p.id !== "profile-1"
+    );
+
+    if (meta.lastId < 1) {
+      meta.lastId = 1;
+    }
+
     return meta;
   } catch {
-    return { lastId: 0, profiles: [] };
+    // 初期状態：lastId=1（最初に作るのは profile-2）
+    return { lastId: 1, profiles: [] };
+  }
+}
+
+function writeProfilesMeta(meta) {
+  try {
+    fsSync.mkdirSync(path.dirname(profilesMetaPath), { recursive: true });
+    fsSync.writeFileSync(
+      profilesMetaPath,
+      JSON.stringify(meta, null, 2),
+      "utf8"
+    );
+  } catch (e) {
+    console.error("[profile] write meta error:", e);
   }
 }
 
@@ -557,6 +584,26 @@ async function saveWindowState(win) {
   }
 }
 
+// ===== 起動プロファイルID取得 =====
+function extractProfileIdFromArgv(argv) {
+  try {
+    const list = Array.isArray(argv) ? argv : process.argv;
+    for (const arg of list) {
+      if (typeof arg !== "string") continue;
+      if (arg.startsWith("--mindra-profile=")) {
+        const v = arg.substring("--mindra-profile=".length).trim();
+        if (v && /^profile-\d+$/.test(v)) {
+          return v;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("[profile] extractProfileIdFromArgv error:", e);
+  }
+  // 見つからなければデフォルト
+  return "profile-1";
+}
+
 // ===== config を main 側で読む =====
 function loadConfigInMain(isDev) {
   const filename = isDev ? "config.dev.json" : "config.prod.json";
@@ -720,7 +767,7 @@ app.on("web-contents-created", (event, contents) => {
 });
 
 // ===== ウィンドウ生成 =====
-async function createWindow() {
+async function createWindow(profileIdArg) {
   const winState = await loadWindowState();
 
   let x, y;
@@ -731,6 +778,16 @@ async function createWindow() {
 
   const isDev = !app.isPackaged;
   const configObj = loadConfigInMain(isDev);
+
+  // 起動プロファイルID決定
+  const profileId =
+    (typeof profileIdArg === "string" && profileIdArg) ||
+    extractProfileIdFromArgv(process.argv) ||
+    "profile-1";
+
+  // renderer 側に渡す config にプロファイルIDを埋め込む
+  configObj.profileId = profileId;
+
   const configB64 = Buffer.from(JSON.stringify(configObj), "utf8").toString(
     "base64"
   );
@@ -830,141 +887,6 @@ async function createWindow() {
       console.error("[logger] failed to log renderer-crashed:", e);
     }
   });
-
-  win.webContents.on(
-    "did-fail-load",
-    (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
-      try {
-        logger.logError("did-fail-load", {
-          errorCode,
-          errorDescription,
-          validatedURL,
-          isMainFrame,
-        });
-      } catch (e) {
-        console.error("[logger] failed to log did-fail-load:", e);
-      }
-    }
-  );
-
-  win.webContents.on(
-    "console-message",
-    (_event, level, message, line, sourceId) => {
-      try {
-        logger.logInfo("main-webContents console", {
-          level,
-          message,
-          line,
-          sourceId,
-        });
-      } catch (e) {
-        console.error("[logger] failed to log console-message:", e);
-      }
-    }
-  );
-
-  win.webContents.on("did-attach-webview", (_event, contents) => {
-    attachShortcutsToWebContents(contents);
-
-    const webviewSession = contents.session;
-    initAdblockForSession(webviewSession).catch((e) => {
-      console.error("[adblock] webview init failed:", e);
-    });
-
-    contents.on("did-finish-load", () => {
-      try {
-        const url = contents.getURL() || "";
-        if (/https?:\/\/(www\.)?youtube\.com\//.test(url)) {
-          contents
-            .executeJavaScript(getYouTubeDomAdblockScript(), { world: "main" })
-            .catch(() => {});
-        }
-      } catch {
-        // ignore
-      }
-    });
-
-    contents.on("did-navigate", (_e, url) => {
-      try {
-        addEntry({
-          url,
-          source: "webview",
-        });
-      } catch (e) {
-        console.error("[history] webview did-navigate error:", e);
-      }
-    });
-
-    contents.on("did-navigate-in-page", (_e, url, isMainFrame) => {
-      if (!isMainFrame) return;
-      try {
-        addEntry({
-          url,
-          source: "webview",
-        });
-      } catch (e) {
-        console.error("[history] webview did-navigate-in-page error:", e);
-      }
-    });
-
-    contents.on("page-title-updated", (_e, title) => {
-      try {
-        const url = contents.getURL();
-        if (!url) return;
-        addEntry({
-          url,
-          title,
-          source: "webview",
-        });
-      } catch (e) {
-        console.error("[history] webview page-title-updated error:", e);
-      }
-    });
-
-    contents.setWindowOpenHandler((details) => {
-      const { url } = details;
-
-      try {
-        const u = new URL(url);
-        const host = u.hostname;
-
-        // Google ログイン画面だけは常に別ウィンドウ許可
-        if (
-          host === "accounts.google.com" ||
-          host === "oauth2.googleapis.com"
-        ) {
-          return { action: "allow" };
-        }
-      } catch {
-        // ignore
-      }
-
-      if (url.startsWith("http")) {
-        // ポップアップ無効モード:
-        if (!generalSettingsFlags.enablePopups) {
-          if (!win.isDestroyed()) {
-            win.webContents.send("mindra-shortcut", {
-              type: "new-tab-with-url",
-              url,
-            });
-          }
-          return { action: "deny" };
-        }
-
-        // ポップアップ有効モード:
-        return { action: "allow" };
-      }
-
-      // その他はそのまま
-      return { action: "allow" };
-    });
-  });
-
-  win.on("closed", () => {
-    if (win === mainWindow) {
-      mainWindow = null;
-    }
-  });
 }
 
 // renderer からのログ受付
@@ -1033,51 +955,75 @@ ipcMain.on("settings:update-general", (_event, flags) => {
 // プロファイルショートカット作成
 ipcMain.handle("profile:create-shortcut", async () => {
   try {
-    const desktopDir = app.getPath("desktop");
-    const exePath = process.execPath;
-
     const meta = readProfilesMeta();
-    const nextId = (meta.lastId || 0) + 1;
+    const lastId = typeof meta.lastId === "number" ? meta.lastId : 1;
+    const nextId = lastId + 1;
     const profileId = `profile-${nextId}`;
 
-    let shortcutPath;
+    const desktopDir = app.getPath("desktop");
+    const appPath = process.execPath;
+    const appDir = path.dirname(appPath);
+
+    let shortcutPath = "";
 
     if (process.platform === "win32") {
-      // Windows は .lnk を作る
-      const shortcutName = `MindraLight - ${profileId}.lnk`;
+      // Windows: .lnk ショートカット
+      const shortcutName = `MindraLight-${profileId}.lnk`;
       shortcutPath = path.join(desktopDir, shortcutName);
 
-      const ok = shell.writeShortcutLink(shortcutPath, "create", {
-        target: exePath,
-        args: `--mindra-profile=${profileId}`,
-        description: `MindraLight profile ${profileId}`,
-        icon: path.join(__dirname, "icons", "icon.ico"),
+      const args = [`--mindra-profile=${profileId}`];
+
+      const { shell } = require("electron");
+      const ok = shell.writeShortcutLink(shortcutPath, {
+        target: appPath,
+        args: args.join(" "),
+        description: `MindraLight (${profileId})`,
+        workingDirectory: appDir,
       });
 
       if (!ok) {
-        return { ok: false, error: "writeShortcutLink failed" };
+        throw new Error("writeShortcutLink failed");
       }
     } else {
-      // Mac / Linux はとりあえず簡単な起動スクリプトを置いておく
-      const scriptName = `MindraLight-${profileId}.sh`;
+      // Mac / Linux: 起動用スクリプト
+      const isMac = process.platform === "darwin";
+      const scriptName = isMac
+        ? `MindraLight-${profileId}.command`
+        : `MindraLight-${profileId}.sh`;
+
       shortcutPath = path.join(desktopDir, scriptName);
-      const script = `#!/bin/sh\n"${exePath}" --mindra-profile=${profileId}\n`;
-      await fs.writeFile(scriptName, script, "utf8");
-      // chmod まではここではやってない（必要なら追加）
+
+      const script = isMac
+        ? `#!/bin/bash
+open -na "${appPath}" --args --mindra-profile=${profileId}
+`
+        : `#!/bin/bash
+"${appPath}" --mindra-profile=${profileId} &
+`;
+
+      await fs.writeFile(shortcutPath, script, "utf8");
+
+      try {
+        await fs.chmod(shortcutPath, 0o755);
+      } catch (e) {
+        console.warn("[profile] chmod failed for", shortcutPath, e);
+      }
     }
 
-    // メタ更新
-    meta.lastId = nextId;
     if (!Array.isArray(meta.profiles)) meta.profiles = [];
-    meta.profiles = meta.profiles.filter((p) => p && p.id !== profileId);
-    meta.profiles.push({ id: profileId, shortcutPath });
+    meta.lastId = nextId;
+    meta.profiles.push({
+      id: profileId,
+      shortcutPath,
+    });
     writeProfilesMeta(meta);
 
-    console.log("[profile] shortcut created:", { profileId, shortcutPath });
+    console.log("[profile] created shortcut:", profileId, shortcutPath);
+
     return { ok: true, profileId, shortcutPath };
   } catch (e) {
     console.error("[profile] create-shortcut error:", e);
-    return { ok: false, error: e && e.message ? e.message : String(e) };
+    return { ok: false, error: String(e) };
   }
 });
 
@@ -1216,20 +1162,24 @@ const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
 } else {
-  app.on("second-instance", () => {
-    if (app.isReady()) {
-      createWindow();
-    }
+  // すでに起動している状態で、別プロファイルのショートカットを起動したとき
+  app.on("second-instance", (_event, commandLine, _workingDirectory) => {
+    if (!app.isReady()) return;
+
+    const profileId = extractProfileIdFromArgv(commandLine);
+    createWindow(profileId);
   });
 
   app.whenReady().then(async () => {
     initHistory(app);
 
-    await createWindow();
+    const initialProfileId = extractProfileIdFromArgv(process.argv);
+    await createWindow(initialProfileId);
 
     app.on("activate", async () => {
       if (BrowserWindow.getAllWindows().length === 0) {
-        await createWindow();
+        const p = extractProfileIdFromArgv(process.argv);
+        await createWindow(p);
       }
     });
 

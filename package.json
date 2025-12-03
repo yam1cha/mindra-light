@@ -1,12 +1,13 @@
 {
   "name": "mindra-light",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "main": "main.js",
   "description": "Simple Electron webview browser for Mindra Light",
   "scripts": {
     "start": "electron .",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "build": "electron-builder"
   },
   "devDependencies": {
     "electron": "^33.0.0",
@@ -29,6 +30,7 @@
         ]
       }
     ],
+    "icon": "icons/2mindra_icon_512.png",
     "win": {
       "icon": "icons/icon.ico"
     },

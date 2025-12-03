@@ -36,6 +36,28 @@ window.addEventListener("unhandledrejection", (event) => {
 });
 
 const CONFIG = window.config || {};
+
+// main.js から渡された profileId（例: "profile-2"）
+const STARTUP_PROFILE_ID =
+  (CONFIG && typeof CONFIG.profileId === "string" && CONFIG.profileId) ||
+  "profile-1";
+
+// タブの中で使う数値のプロファイル番号（1, 2, 3...）
+let DEFAULT_PROFILE_NO = 1;
+const mProfile = /^profile-(\d+)$/.exec(STARTUP_PROFILE_ID);
+if (mProfile) {
+  const n = parseInt(mProfile[1], 10);
+  if (Number.isFinite(n) && n > 0) {
+    DEFAULT_PROFILE_NO = n;
+  }
+}
+
+// プロファイルごとにタブ状態を分けるキー
+const TABS_STATE_KEY =
+  (CONFIG.SAVE_KEY_PREFIX || "") +
+  "mindraLightTabsState:profile-" +
+  DEFAULT_PROFILE_NO;
+
 const rootEl = document.getElementById("root");
 const splitOverlayEl = document.getElementById("split-overlay");
 const splitOverlayIndicator = document.getElementById("split-overlay-indicator");
@@ -141,8 +163,6 @@ const profileColors = {
   10: "#ffcc80",
 };
 
-const TABS_STATE_KEY = (CONFIG.SAVE_KEY_PREFIX || "") + "mindraLightTabsState";
-
 // ===== タブ履歴ヘルパー =====
 
 function ensureTabHistoryFields(tab) {
@@ -196,9 +216,11 @@ function serializeTabsState() {
   return {
     tabs: tabs.map((t) => ({
       url: t.url,
-      profileId: t.profileId || 1,
+      profileId: t.profileId || DEFAULT_PROFILE_NO,
       // タブごとの履歴も保存
-      historyEntries: Array.isArray(t.historyEntries) ? t.historyEntries : [],
+      historyEntries: Array.isArray(t.historyEntries)
+        ? t.historyEntries
+        : [],
       historyIndex:
         typeof t.historyIndex === "number" ? t.historyIndex : -1,
     })),
@@ -279,11 +301,12 @@ function loadTabsState() {
 
       const title = deriveTitleFromUrl(url);
 
+      // loadTabsState 内のタブ復元部分
       tabs.push({
         id,
         url,
         title,
-        profileId: t.profileId || 1,
+        profileId: t.profileId || DEFAULT_PROFILE_NO,
         webviewId: null,
         historyEntries,
         historyIndex,
@@ -790,6 +813,8 @@ function attachWebviewEvents(wv, tabId) {
 }
 
 function createWebviewForTab(tab) {
+  if (!tab) return null;
+
   const wv = document.createElement("webview");
   const wid = "wv-" + nextWebviewId++;
   wv.id = wid;
@@ -797,11 +822,18 @@ function createWebviewForTab(tab) {
   // SplitView 検索のために必要
   wv.dataset.tabId = tab.id;
 
-  const profileId = tab.profileId || 1;
+  // プロファイルIDが入ってなければ起動プロファイル番号で補う
+  if (!tab.profileId) {
+    tab.profileId = DEFAULT_PROFILE_NO;
+  }
+  const profileId = tab.profileId || DEFAULT_PROFILE_NO;
+
   wv.setAttribute("partition", "persist:profile-" + profileId);
   wv.setAttribute("allowpopups", "");
+
   wv.src = tab.url || "https://www.google.com";
 
+  // 最初は非表示（レイアウト計算が終わってから表示）
   wv.style.visibility = "hidden";
   wv.style.opacity = "0";
   wv.style.pointerEvents = "none";
@@ -912,7 +944,7 @@ function createTab(url = "https://www.google.com", activate = true) {
     id,
     url,
     title,
-    profileId: 1,
+    profileId: DEFAULT_PROFILE_NO,
     webviewId: null,
     historyEntries: [],
     historyIndex: -1,

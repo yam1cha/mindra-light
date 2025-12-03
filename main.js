@@ -26,7 +26,7 @@ if (!app.isPackaged) {
 // ロガー初期化
 logger.initLogger(app);
 
-// ★ 90 日以上前のログを自動で削除
+// 90 日以上前のログを自動で削除
 logger.removeOldLogs(logger.getLogsDir(), 90);
 
 let mainWindow = null;
@@ -444,7 +444,7 @@ async function initAdblockForSession(session) {
           // ============================
           if (hostname && hostname.toLowerCase().includes("googlevideo.com")) {
             if (YT_AGGRESSIVE_ADBLOCK && isYouTubeAdVideo(url)) {
-              // ★攻撃的モードのときだけ広告ストリームを殺す
+              // 攻撃的モードのときだけ広告ストリームを殺す
               return callback({ cancel: true });
             }
 

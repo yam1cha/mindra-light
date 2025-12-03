@@ -1,6 +1,6 @@
 {
   "name": "mindra-light",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "main": "main.js",
   "description": "Simple Electron webview browser for Mindra Light",
   "scripts": {

@@ -699,6 +699,7 @@ function applyLayoutTabAddSplit(tabId, direction, clientX, clientY) {
 // ======================
 
 // localStorage 保存用に split 部分だけシリアライズ
+// layout にはタブの id ではなく uid を保存する
 function serializeSplitStateForTabs(tabs, currentTabId) {
   const currentIndex = tabs.findIndex((t) => t.id === currentTabId);
 
@@ -708,11 +709,72 @@ function serializeSplitStateForTabs(tabs, currentTabId) {
     if (idx >= 0) lastTabIndex = idx;
   }
 
+  // id -> uid マッピングを準備（uid が無いタブにはここで発行）
+  const idToUid = new Map();
+  tabs.forEach((t) => {
+    if (!t) return;
+    if (!t.uid && typeof generateTabUid === "function") {
+      t.uid = generateTabUid();
+    }
+    if (typeof t.id === "number" && t.uid) {
+      idToUid.set(t.id, t.uid);
+    }
+  });
+
+  const convertNodeToUidLayout = (node) => {
+    if (!node || typeof node !== "object") return null;
+    if (node.type === "group") {
+      const ids = Array.isArray(node.tabs) ? node.tabs : [];
+      const uids = ids
+        .map((id) => idToUid.get(id))
+        .filter((uid, index, arr) => !!uid && arr.indexOf(uid) === index);
+      if (uids.length === 0) return null;
+
+      let activeUid = null;
+      if (node.activeTabId != null) {
+        activeUid = idToUid.get(node.activeTabId) || null;
+      }
+      if (!activeUid) {
+        activeUid = uids[0];
+      }
+
+      return {
+        type: "group",
+        tabs: uids,
+        // activeTabId フィールドだが、中身は uid を入れて保存する
+        activeTabId: activeUid,
+      };
+    } else if (node.type === "split") {
+      const dir =
+        node.direction === "horizontal" ? "horizontal" : "vertical";
+      const rawRatio =
+        typeof node.ratio === "number" && !Number.isNaN(node.ratio)
+          ? node.ratio
+          : 0.5;
+      const ratio = Math.min(Math.max(rawRatio, 0.1), 0.9);
+      const first = convertNodeToUidLayout(node.first);
+      const second = convertNodeToUidLayout(node.second);
+      if (!first && !second) return null;
+      if (!first) return second;
+      if (!second) return first;
+      return {
+        type: "split",
+        direction: dir,
+        ratio,
+        first,
+        second,
+      };
+    }
+    return null;
+  };
+
+  const uidLayout = layoutRoot ? convertNodeToUidLayout(layoutRoot) : null;
+
   return {
     mode: splitCanvasMode ? 1 : 0,
     empty: splitEmpty ? 1 : 0,
     lastTabIndex,
-    layout: layoutRoot || null,
+    layout: uidLayout,
   };
 }
 
@@ -752,43 +814,62 @@ function restoreSplitStateFromStored(splitState, tabs, baseActiveId) {
 
   // layoutRoot を復元（存在しないタブを掃除）
   const sanitizeLayout = (node) => {
-    if (!node || typeof node !== "object") return null;
-    if (node.type === "group") {
-      const ids = Array.isArray(node.tabs) ? node.tabs : [];
-      const validTabs = ids.filter((id) => tabs.some((t) => t.id === id));
-      if (validTabs.length === 0) return null;
-      const active =
-        validTabs.includes(node.activeTabId) && node.activeTabId
-          ? node.activeTabId
-          : validTabs[0];
-      return {
-        type: "group",
-        tabs: validTabs,
-        activeTabId: active,
-      };
-    } else if (node.type === "split") {
-      const dir = node.direction === "horizontal" ? "horizontal" : "vertical";
-      const rawRatio =
-        typeof node.ratio === "number" && !Number.isNaN(node.ratio)
-          ? node.ratio
-          : 0.5;
-      const ratio = Math.min(Math.max(rawRatio, 0.1), 0.9);
-      const first = sanitizeLayout(node.first);
-      const second = sanitizeLayout(node.second);
-      if (!first && !second) return null;
-      if (!first) return second;
-      if (!second) return first;
-      return {
-        type: "split",
-        direction: dir,
-        ratio,
-        first,
-        second,
-      };
-    }
-    return null;
-  };
+  if (!node || typeof node !== "object") return null;
+  if (node.type === "group") {
+    const uids = Array.isArray(node.tabs) ? node.tabs : [];
 
+    // uid -> id 変換（存在しない uid は捨てる）
+    const validIds = [];
+    uids.forEach((uid) => {
+      const t = tabs.find((tab) => tab && tab.uid === uid);
+      if (t && typeof t.id === "number" && !validIds.includes(t.id)) {
+        validIds.push(t.id);
+      }
+    });
+
+    if (validIds.length === 0) return null;
+
+    let activeId = null;
+    if (node.activeTabId) {
+      const activeTab = tabs.find(
+        (tab) => tab && tab.uid === node.activeTabId
+      );
+      if (activeTab) {
+        activeId = activeTab.id;
+      }
+    }
+    if (!activeId) {
+      activeId = validIds[0];
+    }
+
+    return {
+      type: "group",
+      tabs: validIds,
+      activeTabId: activeId,
+    };
+  } else if (node.type === "split") {
+    const dir =
+      node.direction === "horizontal" ? "horizontal" : "vertical";
+    const rawRatio =
+      typeof node.ratio === "number" && !Number.isNaN(node.ratio)
+        ? node.ratio
+        : 0.5;
+    const ratio = Math.min(Math.max(rawRatio, 0.1), 0.9);
+    const first = sanitizeLayout(node.first);
+    const second = sanitizeLayout(node.second);
+    if (!first && !second) return null;
+    if (!first) return second;
+    if (!second) return first;
+    return {
+      type: "split",
+      direction: dir,
+      ratio,
+      first,
+      second,
+    };
+  }
+  return null;
+};
   if (splitState.layout) {
     layoutRoot = sanitizeLayout(splitState.layout);
   } else {

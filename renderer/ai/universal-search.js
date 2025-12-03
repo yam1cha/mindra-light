@@ -298,23 +298,53 @@ function getRuleForWebview(wv) {
 
 
 // ----------------------------------------------------------
-// 対象webview一覧
+// 対象webview一覧（表示中のものだけに絞る）
 // ----------------------------------------------------------
+
+// webview が画面上で「見えている」か判定
+function isVisibleWebview(wv) {
+  try {
+    const style = window.getComputedStyle(wv);
+    if (style.display === "none" || style.visibility === "hidden") {
+      return false;
+    }
+    const rect = wv.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) {
+      return false;
+    }
+    return true;
+  } catch (_) {
+    // 何か取れなかった場合は、とりあえず true 扱い（安全側）
+    return true;
+  }
+}
+
 function getTargets() {
   const views = window.mindraViews || {};
 
+  // splitview があるならまずそこから（その中でも表示されているものだけ）
   if (typeof views.getSplitWebviews === "function") {
     try {
       const split = views.getSplitWebviews();
-      if (Array.isArray(split) && split.length > 0) return split;
+      if (Array.isArray(split) && split.length > 0) {
+        const visibleSplit = split.filter(isVisibleWebview);
+        if (visibleSplit.length > 0) return visibleSplit;
+        // 全部不可視だった場合はそのまま split を返さず、下のフォールバックに回す
+      }
     } catch (_) {}
   }
 
+  // 全 webview から「見えているもの」だけ
   try {
     const all = Array.from(document.querySelectorAll("webview"));
-    if (all.length > 0) return all;
+    if (all.length > 0) {
+      const visible = all.filter(isVisibleWebview);
+      if (visible.length > 0) return visible;
+      return all; // 全部不可視扱いなら一応 all を返す
+    }
   } catch (_) {}
 
+  // 最後の保険：アクティブ webview 単体
   if (typeof views.getActiveWebview === "function") {
     try {
       const active = views.getActiveWebview();

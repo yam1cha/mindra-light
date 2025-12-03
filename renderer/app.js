@@ -229,6 +229,10 @@ if (splitViewBtn) {
   };
 }
 
+function generateTabUid() {
+  return "tab_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 10);
+}
+
 let tabs = [];
 let closedTabs = [];
 let currentTabId = null;
@@ -329,16 +333,22 @@ function serializeTabsState() {
   const currentIndex = tabs.findIndex((t) => t.id === currentTabId);
 
   return {
-    tabs: tabs.map((t) => ({
-      url: t.url,
-      profileId: t.profileId || 1,
-      // タブごとの履歴も保存
-      historyEntries: Array.isArray(t.historyEntries)
-        ? t.historyEntries
-        : [],
-      historyIndex:
-        typeof t.historyIndex === "number" ? t.historyIndex : -1,
-    })),
+    tabs: tabs.map((t) => {
+      if (!t.uid) {
+        t.uid = generateTabUid();
+      }
+      return {
+        uid: t.uid,
+        url: t.url,
+        profileId: t.profileId || 1,
+        // タブごとの履歴も保存
+        historyEntries: Array.isArray(t.historyEntries)
+          ? t.historyEntries
+          : [],
+        historyIndex:
+          typeof t.historyIndex === "number" ? t.historyIndex : -1,
+      };
+    }),
     currentTabIndex: currentIndex < 0 ? 0 : currentIndex,
     split: serializeSplitStateForTabs(tabs, currentTabId),
     sidebar: {
@@ -415,10 +425,15 @@ function loadTabsState() {
       }
 
       const title = deriveTitleFromUrl(url);
+      const uid =
+        typeof t.uid === "string" && t.uid
+          ? t.uid
+          : generateTabUid();
 
       // loadTabsState 内のタブ復元部分
       tabs.push({
         id,
+        uid,
         url,
         title,
         profileId: t.profileId || 1,
@@ -1105,10 +1120,10 @@ function renderTabs() {
     item.appendChild(left);
     item.appendChild(rightBox);
 
-    // ★ 並び替え用ドラッグイベントを設定
+    // 並び替え用ドラッグイベントを設定
     setupSidebarTabDragHandlers(item, tab);
 
-    // ★ SplitView 用のドラッグ開始（既存処理）はそのまま保持
+    // SplitView 用のドラッグ開始（既存処理）はそのまま保持
     item.addEventListener("mousedown", handleTabMouseDown);
 
     item.addEventListener("contextmenu", (e) => {
@@ -1377,9 +1392,11 @@ function switchTab(id) {
 
 function createTab(url = "https://www.google.com", activate = true) {
   const id = nextTabId++;
+  const uid = generateTabUid();
   const title = deriveTitleFromUrl(url);
   const tab = {
     id,
+    uid,
     url,
     title,
     profileId: 1,
@@ -1444,12 +1461,14 @@ function restoreClosedTab() {
   const last = closedTabs.pop();
   if (!last) return;
   const id = nextTabId++;
+  const uid = generateTabUid();
 
   const url = last.url || "https://www.google.com";
   const title = last.title || deriveTitleFromUrl(url);
 
   const tab = {
     id,
+    uid,
     url,
     title,
     profileId: last.profileId || 1,

@@ -34,7 +34,7 @@
       <div id="window-titlebar">
         <div class="window-titlebar-left">
           <img src="icons/mindra_icon_16.png" alt="Mindra" />
-          <span class="window-title-text">Mindra Light v0.6.1</span>
+          <span class="window-title-text">Mindra Light v0.7.0</span>
         </div>
         <div>
           <button id="win-min" class="window-btn">−</button>
@@ -54,6 +54,12 @@
                   <circle cx="12" cy="12" r="3.2" />
                   <path d="M4.8 12a7.2 7.2 0 0 1 .12-1.2l-1.78-1.02 1.6-2.77 1.84.5a7.3 7.3 0 0 1 1.02-.88l-.08-1.9 3.2-.8.9 1.7c.4-.02.8-.02 1.2 0l.9-1.7 3.2.8-.08 1.9c.36.26.7.55 1.02.88l1.84-.5 1.6 2.77-1.78 1.02c.06.4.1.8.1 1.2s-.04.8-.1 1.2l1.78 1.02-1.6 2.77-1.84-.5c-.3.32-.66.62-1.02.88l.08 1.9-3.2.8-.9-1.7c-.4.02-.8.02-1.2 0l-.9 1.7-3.2-.8.08-1.9a7.3 7.3 0 0 1-1.02-.88l-1.84.5-1.6-2.77 1.78-1.02A7.3 7.3 0 0 1 4.8 12Z" />
                 </g>
+              </svg>
+            </button>
+            <button id="btn-toggle-bookmark-mode" class="sidebar-icon-btn" title="ブックマーク">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+                  d="M8 4h8a1 1 0 0 1 1 1v14l-5-3-5 3V5a1 1 0 0 1 1-1z"/>
               </svg>
             </button>
           </div>
@@ -93,6 +99,8 @@
         </div>
 
         <div class="sidebar-section-divider"></div>
+
+        <div id="bookmark-mode-pane" class="bookmark-mode-pane" style="display:none;"></div>
 
         <div class="sidebar-url-row url-with-star">
           <input id="sidebar-url-input" type="text" placeholder="URL を入力 / 検索" />
@@ -144,8 +152,6 @@
             </svg>
           </button>
         </div>
-
-        <div id="bookmark-bar" class="bookmark-bar"></div>
 
         <button id="btn-new-tab">
           <span class="plus">＋</span><span>New Tab</span>

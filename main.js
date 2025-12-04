@@ -904,7 +904,7 @@ async function createWindow(profileIdArg) {
   });
 
   if (isDev) {
-    // debug win.webContents.openDevTools({ mode: "detach" });
+    win.webContents.openDevTools({ mode: "detach" });
   }
 
   win.webContents.setUserAgent(

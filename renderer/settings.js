@@ -81,7 +81,7 @@
               <label class="settings-label">プロファイル</label>
               <div class="settings-row">
                 <button id="setting-add-profile-shortcut" class="settings-button">
-                  プロファイルの追加
+                  プロファイルの追加(現在はバグがあるため使用しないで)
                 </button>
               </div>
               <p class="settings-help">

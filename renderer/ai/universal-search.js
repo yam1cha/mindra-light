@@ -47,9 +47,9 @@ const WEB_ACTION_RULES = [
     chat: { input: "mindra-ng" },
   },
   {
-    // [US] Microsoft Copilot Web（専用ルート）
+    // [US] Microsoft Copilot Web
     match: /https?:\/\/copilot\.microsoft\.com\//,
-    chat: { input: "mindra-ng" },
+    chat: { input: "mindra-dummy" },
   },
   {
     // [US] Bing Chat / Copilot in Bing
@@ -118,7 +118,7 @@ const WEB_ACTION_RULES = [
     // [Google] 検索
     match: /https?:\/\/www\.google\./,
     search: {
-      input: 'form[action="/search"] input[name="q"]',
+      input: 'mindra-ng',
     },
   },
 
@@ -183,13 +183,25 @@ const WEB_ACTION_RULES = [
   },
   {
     // [CN] Zhipu GLM
-    match: /https?:\/\/(chatglm\.cn|bigmodel\.cn)\//,
+    match: /https?:\/\/(chatglm\.cn|bigmodel\.cn|chat\.z\.ai)\//,
+    chat: {
+      input: 'textarea#chat-input',
+
+      // FIXME: GLM かどうか判定するためのフラグ
+      is_glm: true,
+    },
+  },
+  {
+    // [CN] Kimi
+    match: /https?:\/\/(www\.)?kimi\.com\//,
     chat: { input: "mindra-dummy" },
   },
   {
-    // [CN] Kimi（専用ルート）
-    match: /https?:\/\/(www\.)?kimi\.com\//,
-    chat: { input: "mindra-ng" },
+    // [CN] MiniMax
+    match: /https?:\/\/agent\.minimax\.io\//,
+    chat: {
+      input: 'textarea#chat-input',
+    },
   },
 
   // ===== Japan / Korea / Asia =====
@@ -205,8 +217,10 @@ const WEB_ACTION_RULES = [
   },
   {
     // [IN] Krutrim
-    match: /https?:\/\/(www\.)?krutrim\.com\//,
-    chat: { input: "mindra-dummy" },
+    match: /https?:\/\/(www\.)?(krutrim\.com|kruti\.ai)\//,
+    chat: {
+      input: 'textarea.txt-primary',
+    },
   },
   {
     // [IN] Hanooman
@@ -381,13 +395,7 @@ function buildInjectionScript(query, rule) {
         if (!el) return false;
 
         el.focus();
-
-        if ("value" in el) {
-          el.value = q;
-        }
-        if (el.isContentEditable || el.getAttribute("contenteditable") === "true") {
-          el.innerText = q;
-        }
+        document.execCommand('insertText', false, q);
 
         try {
           el.dispatchEvent(new Event("input", { bubbles: true }));
@@ -423,10 +431,20 @@ function buildInjectionScript(query, rule) {
               el.dispatchEvent(new KeyboardEvent("keydown", ev));
               el.dispatchEvent(new KeyboardEvent("keypress", ev));
               el.dispatchEvent(new KeyboardEvent("keyup", ev));
-              sent = true;
             } catch (e) {}
           }
-        }, 150); // ← ここでちょっと待つ（100〜200msくらいならお好みで）
+
+          // さらに保険として、フォーム経由なら submit も試す
+          // FIXME: GLM ではトップページに戻ってしまうので実行しない（Claude では Enter で送信できないので実行する必要がある）
+          if (!cfg?.chat?.is_glm) {
+            try {
+              var form = el.form;
+              if (form) {
+                form.submit();
+              }
+            } catch (e) {}
+          }
+        }, 150); // ← ここでちょっと待つ
 
         // 非同期送信なので true 固定でOK
         return true;
@@ -441,7 +459,7 @@ function buildInjectionScript(query, rule) {
         ruleSelectors.push(cfg.chat.input);
       }
 
-      // ===== 汎用セレクタ（検索＋チャット混在の1本リスト） =====
+      // ===== 汎用セレクタ =====
       var unifiedSelectors = [
         // 検索系
         'form[action="/search"] input[name="q"]',
@@ -506,6 +524,71 @@ function buildInjectionScript(query, rule) {
 // ----------------------------------------------------------
 async function runActionInWebview(wv, query) {
   const url = getWebviewUrl(wv) || "";
+
+  // ========= Google 検索（トップ / 結果 共通） 専用ルート ==========
+  if (/https?:\/\/www\.google\./.test(url)) {
+    const code = `(function(q){
+      // トップページ・検索結果ページ両方に対応するため、textarea / input 両方を見る
+      var input =
+        document.querySelector('form[action="/search"] textarea[name="q"]') ||
+        document.querySelector('form[action="/search"] input[name="q"]') ||
+        document.querySelector('textarea[name="q"]') ||
+        document.querySelector('input[name="q"]');
+      if (!input) return "google:no-input";
+
+      input.focus();
+      if ("value" in input) {
+        input.value = q;
+      } else {
+        input.textContent = q;
+      }
+
+      try {
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      } catch (_) {}
+
+      setTimeout(function () {
+        try {
+          // 検索実行ボタンいろいろ
+          var btn =
+            document.querySelector('button[aria-label="検索"]') ||
+            document.querySelector('button[aria-label="Google 検索"]') ||
+            document.querySelector('button[aria-label="Search"]') ||
+            document.querySelector('input[name="btnK"][type="submit"]');
+
+          if (btn) {
+            btn.click();
+          } else if (input.form) {
+            // フォームがあれば submit
+            input.form.submit();
+          } else {
+            // それでもダメなら Enter を投げる
+            var evInit = {
+              key: 'Enter',
+              code: 'Enter',
+              keyCode: 13,
+              which: 13,
+              bubbles: true
+            };
+            ['keydown','keypress','keyup'].forEach(function(t){
+              input.dispatchEvent(new KeyboardEvent(t, evInit));
+            });
+          }
+        } catch (_) {}
+      }, 150);
+
+      return "google:ok";
+    })(${JSON.stringify(query)});`;
+
+    try {
+      if (typeof wv.executeJavaScript !== "function") return "error:no-exec";
+      const result = await wv.executeJavaScript(code, false);
+      return result || "none";
+    } catch (_) {
+      return "error:exception";
+    }
+  }
 
   // ========= Perplexity 専用ルート ==========
   if (/perplexity\.ai/.test(url)) {
@@ -579,32 +662,6 @@ async function runActionInWebview(wv, query) {
     return result || "none";
   }
 
-  // ========= Microsoft Copilot 専用ルート ==========
-  if (/copilot\.microsoft\.com/.test(url)) {
-    const code = `(function(q) {
-      var el =
-        document.querySelector('textarea#userInput') ||
-        document.querySelector('textarea[data-testid="composer-input"]') ||
-        document.querySelector('textarea[role="textbox"]');
-
-      if (!el) return 'none';
-
-      el.focus();
-      el.value = q;
-
-      try {
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-        el.dispatchEvent(new Event('change', { bubbles: true }));
-      } catch (_) {}
-
-      return 'chat-mscopilot-typed';
-    })(${JSON.stringify(query)});`;
-
-    if (typeof wv.executeJavaScript !== "function") return "error:no-exec";
-    const result = await wv.executeJavaScript(code, false);
-    return result || "none";
-  }
-
   // ========= Manus 専用ルート ==========
   if (/manus\.im\/app/.test(url)) {
     const code = `(function(q) {
@@ -637,66 +694,6 @@ async function runActionInWebview(wv, query) {
       }, 150);
 
       return 'chat-manus';
-    })(${JSON.stringify(query)});`;
-
-    if (typeof wv.executeJavaScript !== "function") return "error:no-exec";
-    const result = await wv.executeJavaScript(code, false);
-    return result || "none";
-  }
-
-  // ========= Kimi 専用ルート ==========
-  if (/kimi\.com/.test(url)) {
-    const code = `(function(q) {
-      var el =
-        document.querySelector('div[contenteditable="true"][data-lexical-editor="true"][role="textbox"]') ||
-        document.querySelector('div[contenteditable="true"][role="textbox"]');
-
-      if (!el) return 'none';
-
-      el.focus();
-      try {
-        var sel = window.getSelection();
-        if (sel) {
-          var range = document.createRange();
-          range.selectNodeContents(el);
-          range.collapse(false);
-          sel.removeAllRanges();
-          sel.addRange(range);
-        }
-      } catch (_) {}
-
-      try {
-        document.execCommand('selectAll', false, null);
-        document.execCommand('delete', false, null);
-
-        var ok = false;
-        try { ok = document.execCommand('insertText', false, q); } catch (_) {}
-        if (!ok) el.textContent = q;
-      } catch (_) {
-        el.textContent = q;
-      }
-
-      try {
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-        el.dispatchEvent(new Event('change', { bubbles: true }));
-      } catch (_) {}
-
-      setTimeout(() => {
-        try {
-          var evInit = {
-            key: 'Enter',
-            code: 'Enter',
-            keyCode: 13,
-            which: 13,
-            bubbles: true
-          };
-          ['keydown', 'keypress', 'keyup'].forEach(t => {
-            el.dispatchEvent(new KeyboardEvent(t, evInit));
-          });
-        } catch (_) {}
-      }, 150);
-
-      return 'chat-kimi';
     })(${JSON.stringify(query)});`;
 
     if (typeof wv.executeJavaScript !== "function") return "error:no-exec";
@@ -745,7 +742,7 @@ window.runUniversalSearch = async function (query, _ignored) {
   const msg =
     successCount === 0
       ? "いい感じの入力欄が見つからなくて、何もできなかったよ。"
-      : "送信したよ";
+      : "送信したよ。";
 
   window.UNIVERSAL_SEARCH.lastQuery = query;
   window.UNIVERSAL_SEARCH.lastResult = { targets: targets.length };

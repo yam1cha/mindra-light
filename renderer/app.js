@@ -1,3 +1,51 @@
+const rootEl = document.getElementById("root");
+const splitOverlayEl = document.getElementById("split-overlay");
+const splitOverlayIndicator = document.getElementById("split-overlay-indicator");
+const sidebar = document.getElementById("sidebar");
+const sidebarHoverZone = document.getElementById("sidebar-hover-zone");
+const tabListEl = document.getElementById("tab-list");
+const btnToggleSidebarMode = document.getElementById("btn-toggle-sidebar-mode");
+const btnToggleAI = document.getElementById("btn-toggle-ai");
+const btnToggleTitlebarMode = document.getElementById("btn-toggle-titlebar-mode");
+const rightSidebar = document.getElementById("right-sidebar");
+const profileOverlay = document.getElementById("profile-overlay");
+const profileMenuEl = document.getElementById("profile-menu");
+const findBar = document.getElementById("find-bar");
+const findInput = document.getElementById("find-input");
+const findCountEl = document.getElementById("find-count");
+const findCloseBtn = document.getElementById("find-close");
+const newTabBtn = document.getElementById("btn-new-tab");
+const splitViewBtn = document.getElementById("btn-split-view");
+const settingsOverlay = document.getElementById("settings-overlay");
+const settingsPanel = document.getElementById("settings-panel");
+const settingsCloseBtn = document.getElementById("settings-panel-close");
+const btnOpenSettings = document.getElementById("btn-open-settings");
+const settingsRoot = document.getElementById("settings-root");
+const sidebarUrlInput = document.getElementById("sidebar-url-input");
+const sidebarBookmarkBtn = document.getElementById("btn-sidebar-bookmark");
+const btnToggleBookmarkMode = document.getElementById("btn-toggle-bookmark-mode");
+const bookmarkModePane = document.getElementById("bookmark-mode-pane");
+const LEFT_SIDEBAR_WIDTH = 240;
+const RIGHT_SIDEBAR_WIDTH = 240;
+
+// ===== MindraLight renderer 障害ログ（global handlers） =====
+window.addEventListener("error", (event) => {
+  try {
+    const info = {
+      message: event && event.message,
+      source: event && event.filename,
+      lineno: event && event.lineno,
+      colno: event && event.colno,
+    };
+    if (event && event.error && event.error.stack) {
+      info.stack = event.error.stack;
+    }
+    console.error("[renderer-error]", info);
+  } catch (e) {
+    console.error("[renderer-error-handler-failed]", e);
+  }
+});
+
 // ===== MindraLight renderer 障害ログ（global handlers） =====
 window.addEventListener("error", (event) => {
   try {
@@ -20,6 +68,7 @@ window.addEventListener("unhandledrejection", (event) => {
   try {
     const reason = event && event.reason;
     let info;
+
     if (reason && typeof reason === "object") {
       info = {
         message: reason.message,
@@ -27,8 +76,13 @@ window.addEventListener("unhandledrejection", (event) => {
         name: reason.name,
       };
     } else {
-      info = { reason: String(reason) };
+      info = {
+        message: String(reason),
+        stack: null,
+        name: typeof reason,
+      };
     }
+
     console.error("[renderer-unhandledrejection]", info);
   } catch (e) {
     console.error("[renderer-unhandledrejection-handler-failed]", e);
@@ -62,78 +116,1216 @@ const TABS_STATE_KEY =
 const BOOKMARKS_STORAGE_KEY =
   (CONFIG.SAVE_KEY_PREFIX || "") +
   "mindraLightBookmarks:" +
-  STARTUP_PROFILE_ID;
+  STARTUP_PROFILE_ID; // profile-1 / profile-2 ごとに分ける:contentReference[oaicite:1]{index=1}
 
-// [{ url, title }] の配列
+// ===== ブックマークモードの開閉（左サイドバーの切り替えボタン） =====
+if (btnToggleBookmarkMode && bookmarkModePane && sidebar) {
+  btnToggleBookmarkMode.addEventListener("click", () => {
+    // フラグを反転
+    bookmarkModeVisible = !bookmarkModeVisible;
+
+    // ボタンのON/OFF色（CSS側で .active をデザイン）
+    setToggleButtonVisual(btnToggleBookmarkMode, bookmarkModeVisible);
+
+    // サイドバーにモードクラスを付与（CSSでURL欄以下を隠す）
+    sidebar.classList.toggle("bookmark-mode-on", bookmarkModeVisible);
+
+    // レイアウト反映（New Tab / Split View / 下線の表示・非表示もここでやる）
+    applyBookmarkModeLayout();
+
+    // ツリーは「ブックマークモードONのときだけ」描画し直す
+    if (bookmarkModeVisible) {
+      renderBookmarkTreePane();
+    }
+  });
+}
+
+/**
+ * BookmarkNode:
+ * - フォルダ: { id, type: "folder", title, children: BookmarkNode[] }
+ * - アイテム: { id, type: "item", title, url }
+ */
+
+// ルートフォルダを含むツリー全体
+let bookmarkTree = null;
+
+// 互換用：ブックマークバー用のフラット配列（全アイテム）
 let bookmarks = [];
 
+// --- ブックマーク並び替え用ドラッグ状態 ---
+let draggingBookmarkId = null;
+let bookmarkDragOverRow = null;
+
+function clearBookmarkDragIndicator() {
+  if (!bookmarkDragOverRow) return;
+  bookmarkDragOverRow.style.borderTop = "";
+  bookmarkDragOverRow.style.borderBottom = "";
+  bookmarkDragOverRow.removeAttribute("data-bm-drop-pos");
+  bookmarkDragOverRow = null;
+}
+
+// ID 発行
+let _bookmarkIdCounter = Date.now();
+function generateBookmarkId() {
+  _bookmarkIdCounter += 1;
+  return "bm-" + _bookmarkIdCounter;
+}
+
+function createEmptyBookmarkTree() {
+  return {
+    id: "root",
+    type: "folder",
+    title: "ブックマーク",
+    children: [],
+  };
+}
+
+// Node の形を整える（folder / item 判定）
+function normalizeBookmarkNode(node) {
+  if (!node || typeof node !== "object") return null;
+
+  if (node.type === "folder") {
+    return {
+      id: typeof node.id === "string" ? node.id : generateBookmarkId(),
+      type: "folder",
+      title:
+        typeof node.title === "string" && node.title
+          ? node.title
+          : "フォルダ",
+      children: Array.isArray(node.children)
+        ? node.children
+            .map((c) => normalizeBookmarkNode(c))
+            .filter((c) => !!c)
+        : [],
+    };
+  }
+
+  // item 扱い
+  if (!node.url || typeof node.url !== "string") return null;
+  return {
+    id: typeof node.id === "string" ? node.id : generateBookmarkId(),
+    type: "item",
+    url: node.url,
+    title:
+      typeof node.title === "string" && node.title
+        ? node.title
+        : deriveTitleFromUrl(node.url),
+  };
+}
+
+// ツリーから「全アイテム」のフラット配列を作る（バー描画用）
+function flattenBookmarksFromTree(root) {
+  const result = [];
+  function walk(node) {
+    if (!node) return;
+    if (node.type === "item") {
+      result.push({ url: node.url, title: node.title });
+      return;
+    }
+    if (node.type === "folder" && Array.isArray(node.children)) {
+      node.children.forEach((c) => walk(c));
+    }
+  }
+  walk(root);
+  return result;
+}
+
+function rebuildFlatBookmarksFromTree() {
+  if (!bookmarkTree) {
+    bookmarks = [];
+    return;
+  }
+  bookmarks = flattenBookmarksFromTree(bookmarkTree);
+}
+
+// 旧形式（配列）→ ツリー形式 への変換
+function migrateFlatArrayToTree(flatArray) {
+  const root = createEmptyBookmarkTree();
+  flatArray
+    .filter((b) => b && typeof b.url === "string" && b.url)
+    .forEach((b) => {
+      root.children.push({
+        id: generateBookmarkId(),
+        type: "item",
+        url: b.url,
+        title:
+          typeof b.title === "string" && b.title
+            ? b.title
+            : deriveTitleFromUrl(b.url),
+      });
+    });
+  return root;
+}
+
+// localStorage から読み込み
 function loadBookmarks() {
   try {
     const raw = localStorage.getItem(BOOKMARKS_STORAGE_KEY);
     if (!raw) {
-      bookmarks = [];
+      bookmarkTree = createEmptyBookmarkTree();
+      rebuildFlatBookmarksFromTree();
       return;
     }
+
     const data = JSON.parse(raw);
+
     if (Array.isArray(data)) {
-      bookmarks = data
-        .filter((b) => b && typeof b.url === "string" && b.url)
-        .map((b) => ({
-          url: b.url,
-          title:
-            typeof b.title === "string" && b.title
-              ? b.title
-              : deriveTitleFromUrl(b.url),
-        }));
+      // 旧バージョン: フラット配列 → ルート直下に並べる
+      bookmarkTree = migrateFlatArrayToTree(data);
+    } else if (data && typeof data === "object") {
+      // 新バージョン: ツリー構造
+      const normalized = normalizeBookmarkNode(data);
+      bookmarkTree = normalized || createEmptyBookmarkTree();
     } else {
-      bookmarks = [];
+      bookmarkTree = createEmptyBookmarkTree();
     }
+
+    rebuildFlatBookmarksFromTree();
   } catch (err) {
     console.error("loadBookmarks error", err);
-    bookmarks = [];
+    bookmarkTree = createEmptyBookmarkTree();
+    rebuildFlatBookmarksFromTree();
   }
+}
+
+// ===== ルート直下ブックマークの並び替えヘルパ =====
+// draggingBookmarkId で指しているノードを、baseId の前/後ろに動かす
+function moveRootBookmarkRelative(fromId, baseId, before) {
+  if (!bookmarkTree || !Array.isArray(bookmarkTree.children)) return;
+
+  const list = bookmarkTree.children;
+
+  const fromIndex = list.findIndex((n) => n && n.id === fromId);
+  const baseIndex = list.findIndex((n) => n && n.id === baseId);
+
+  // 見つからない or 同じ位置なら何もしない
+  if (fromIndex === -1 || baseIndex === -1 || fromIndex === baseIndex) {
+    return;
+  }
+
+  // 取り出し
+  const [moved] = list.splice(fromIndex, 1);
+
+  // 挿入位置計算
+  let insertIndex = before ? baseIndex : baseIndex + 1;
+
+  // 取り出した位置より右に挿入する場合は、配列が1つ詰まっているぶん補正
+  if (insertIndex > fromIndex) {
+    insertIndex -= 1;
+  }
+
+  if (insertIndex < 0) insertIndex = 0;
+  if (insertIndex > list.length) insertIndex = list.length;
+
+  list.splice(insertIndex, 0, moved);
+
+  // フラット配列と保存を更新
+  rebuildFlatBookmarksFromTree();
+  saveBookmarks();
+}
+
+// サイドバーの「一番上より上 / 一番下より下」にドロップされたとき用
+// insertIndex は 0〜children.length の想定（children.length のときは末尾に）
+function moveRootBookmarkToIndex(fromId, insertIndex) {
+  if (!bookmarkTree || !Array.isArray(bookmarkTree.children)) return;
+
+  const list = bookmarkTree.children;
+
+  const fromIndex = list.findIndex((n) => n && n.id === fromId);
+  if (fromIndex === -1) {
+    return;
+  }
+
+  // いったん取り出し
+  const [moved] = list.splice(fromIndex, 1);
+
+  // 範囲補正（末尾の一つ後ろ = append も許可）
+  if (insertIndex < 0) insertIndex = 0;
+  if (insertIndex > list.length) insertIndex = list.length;
+
+  // 取り出した位置より右側に入れるときは1つ左に詰める
+  if (insertIndex > fromIndex) {
+    insertIndex -= 1;
+  }
+
+  if (insertIndex < 0) insertIndex = 0;
+  if (insertIndex > list.length) insertIndex = list.length;
+
+  list.splice(insertIndex, 0, moved);
+
+  rebuildFlatBookmarksFromTree();
+  saveBookmarks();
 }
 
 function saveBookmarks() {
   try {
-    localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(bookmarks));
+    if (!bookmarkTree) {
+      bookmarkTree = createEmptyBookmarkTree();
+    }
+    localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(bookmarkTree));
   } catch (err) {
     console.error("saveBookmarks error", err);
   }
 }
 
-function isUrlBookmarked(url) {
-  if (!url) return false;
-  return Array.isArray(bookmarks) && bookmarks.some((b) => b && b.url === url);
+// URL に対応するアイテムをツリーから探す
+function findBookmarkItemByUrl(node, url) {
+  if (!node || !url) return null;
+
+  if (node.type === "item" && node.url === url) {
+    return node;
+  }
+  if (node.type === "folder" && Array.isArray(node.children)) {
+    for (const child of node.children) {
+      const found = findBookmarkItemByUrl(child, url);
+      if (found) return found;
+    }
+  }
+  return null;
 }
 
-const rootEl = document.getElementById("root");
-const splitOverlayEl = document.getElementById("split-overlay");
-const splitOverlayIndicator = document.getElementById("split-overlay-indicator");
-const sidebar = document.getElementById("sidebar");
-const sidebarHoverZone = document.getElementById("sidebar-hover-zone");
-const tabListEl = document.getElementById("tab-list");
-const btnToggleSidebarMode = document.getElementById("btn-toggle-sidebar-mode");
-const btnToggleAI = document.getElementById("btn-toggle-ai");
-const btnToggleTitlebarMode = document.getElementById("btn-toggle-titlebar-mode");
-const rightSidebar = document.getElementById("right-sidebar");
-const profileOverlay = document.getElementById("profile-overlay");
-const profileMenuEl = document.getElementById("profile-menu");
-const findBar = document.getElementById("find-bar");
-const findInput = document.getElementById("find-input");
-const findCountEl = document.getElementById("find-count");
-const findCloseBtn = document.getElementById("find-close");
-const newTabBtn = document.getElementById("btn-new-tab");
-const splitViewBtn = document.getElementById("btn-split-view");
-const settingsOverlay = document.getElementById("settings-overlay");
-const settingsPanel = document.getElementById("settings-panel");
-const settingsCloseBtn = document.getElementById("settings-panel-close");
-const btnOpenSettings = document.getElementById("btn-open-settings");
-const settingsRoot = document.getElementById("settings-root");
-const sidebarUrlInput = document.getElementById("sidebar-url-input");
-const sidebarBookmarkBtn = document.getElementById("btn-sidebar-bookmark");
-const LEFT_SIDEBAR_WIDTH = 240;
-const RIGHT_SIDEBAR_WIDTH = 240;
+function isUrlBookmarked(url) {
+  if (!url || !bookmarkTree) return false;
+  return !!findBookmarkItemByUrl(bookmarkTree, url);
+}
+
+// ルート直下にブックマークアイテムを追加（フォルダ選択なし）
+function addBookmarkToRoot(url, title) {
+  if (!bookmarkTree) {
+    bookmarkTree = createEmptyBookmarkTree();
+  }
+  if (!Array.isArray(bookmarkTree.children)) {
+    bookmarkTree.children = [];
+  }
+
+  // 重複は一旦全削除してから 1 件だけ追加
+  removeBookmarkByUrl(url);
+
+  bookmarkTree.children.push({
+    id: generateBookmarkId(),
+    type: "item",
+    url,
+    title: title || deriveTitleFromUrl(url),
+  });
+
+  rebuildFlatBookmarksFromTree();
+  saveBookmarks();
+}
+
+// URL に一致するアイテムを1件削除
+function removeBookmarkByUrl(url) {
+  if (!bookmarkTree || !url) return false;
+
+  let removed = false;
+
+  function walk(node) {
+    if (!node || node.type !== "folder" || !Array.isArray(node.children)) {
+      return;
+    }
+    const newChildren = [];
+    for (const child of node.children) {
+      if (child.type === "item" && child.url === url) {
+        removed = true;
+        continue;
+      }
+      if (child.type === "folder") {
+        walk(child);
+      }
+      newChildren.push(child);
+    }
+    node.children = newChildren;
+  }
+
+  walk(bookmarkTree);
+
+  if (removed) {
+    rebuildFlatBookmarksFromTree();
+    saveBookmarks();
+  }
+  return removed;
+}
+
+// ===== ブックマークノード共通ユーティリティ =====
+
+// ===== ブックマーク用簡易入力ダイアログ（prompt の代わり） =====
+function openBookmarkDialog(options) {
+  return new Promise((resolve) => {
+    const { title, fields } = options || {};
+    const overlay = document.createElement("div");
+    overlay.className = "bookmark-dialog-overlay";
+
+    const dialog = document.createElement("div");
+    dialog.className = "bookmark-dialog";
+
+    const titleEl = document.createElement("div");
+    titleEl.className = "bookmark-dialog-title";
+    titleEl.textContent = title || "ブックマーク編集";
+    dialog.appendChild(titleEl);
+
+    const inputs = {};
+
+    (fields || []).forEach((field) => {
+      const wrap = document.createElement("div");
+      wrap.className = "bookmark-dialog-field";
+
+      if (field.label) {
+        const labelEl = document.createElement("label");
+        labelEl.className = "bookmark-dialog-label";
+        labelEl.textContent = field.label;
+        wrap.appendChild(labelEl);
+      }
+
+      const input = document.createElement("input");
+      input.className = "bookmark-dialog-input";
+      input.type = "text";
+      if (field.placeholder) input.placeholder = field.placeholder;
+      if (field.defaultValue != null) input.value = field.defaultValue;
+
+      wrap.appendChild(input);
+      inputs[field.name] = input;
+      dialog.appendChild(wrap);
+    });
+
+    const btnRow = document.createElement("div");
+    btnRow.className = "bookmark-dialog-buttons";
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.type = "button";
+    cancelBtn.className =
+      "bookmark-dialog-btn bookmark-dialog-btn-cancel";
+    cancelBtn.textContent = "キャンセル";
+
+    const okBtn = document.createElement("button");
+    okBtn.type = "button";
+    okBtn.className = "bookmark-dialog-btn bookmark-dialog-btn-ok";
+    okBtn.textContent = "OK";
+
+    btnRow.appendChild(cancelBtn);
+    btnRow.appendChild(okBtn);
+    dialog.appendChild(btnRow);
+
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    function close(result) {
+      if (overlay.parentNode) {
+        overlay.parentNode.removeChild(overlay);
+      }
+      resolve(result || null);
+    }
+
+    cancelBtn.addEventListener("click", () => close(null));
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) {
+        close(null);
+      }
+    });
+
+    okBtn.addEventListener("click", () => {
+      const result = {};
+      Object.keys(inputs).forEach((name) => {
+        result[name] = inputs[name].value;
+      });
+      close(result);
+    });
+
+    dialog.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        okBtn.click();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        close(null);
+      }
+    });
+
+    const firstField =
+      fields && fields[0] && inputs[fields[0].name];
+    if (firstField) {
+      firstField.focus();
+      firstField.select();
+    }
+  });
+}
+
+// id でノードを探す
+function findBookmarkNodeById(node, id) {
+  if (!node || !id) return null;
+  if (node.id === id) return node;
+  if (node.type === "folder" && Array.isArray(node.children)) {
+    for (const child of node.children) {
+      const found = findBookmarkNodeById(child, id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+// id でノードとその親を探す
+function findBookmarkNodeAndParentById(node, id, parent = null) {
+  if (!node || !id) return null;
+  if (node.id === id) {
+    return { node, parent };
+  }
+  if (node.type === "folder" && Array.isArray(node.children)) {
+    for (const child of node.children) {
+      const found = findBookmarkNodeAndParentById(child, id, node);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+// id でノードを削除する
+function removeBookmarkNodeById(id) {
+  if (!bookmarkTree || !id) return false;
+
+  let removed = false;
+
+  function walk(node) {
+    if (!node || node.type !== "folder" || !Array.isArray(node.children)) {
+      return;
+    }
+    const newChildren = [];
+    for (const child of node.children) {
+      if (child.id === id) {
+        removed = true;
+        continue;
+      }
+      if (child.type === "folder") {
+        walk(child);
+      }
+      newChildren.push(child);
+    }
+    node.children = newChildren;
+  }
+
+  walk(bookmarkTree);
+
+  if (removed) {
+    rebuildFlatBookmarksFromTree();
+    saveBookmarks();
+  }
+  return removed;
+}
+
+// fromId を targetId の前/後に移動（ツリー全体で有効）
+function moveRootBookmarkRelative(fromId, targetId, before) {
+  if (!bookmarkTree || !fromId || !targetId || fromId === targetId) return;
+
+  const fromInfo = findBookmarkNodeAndParentById(bookmarkTree, fromId);
+  const targetInfo = findBookmarkNodeAndParentById(bookmarkTree, targetId);
+  if (!fromInfo || !targetInfo) return;
+
+  const fromParent = fromInfo.parent || bookmarkTree;
+  const targetParent = targetInfo.parent || bookmarkTree;
+
+  if (!Array.isArray(fromParent.children) || !Array.isArray(targetParent.children)) {
+    return;
+  }
+
+  const fromIndex = fromParent.children.findIndex((c) => c.id === fromId);
+  if (fromIndex < 0) return;
+
+  const [movingNode] = fromParent.children.splice(fromIndex, 1);
+
+  let targetIndex = targetParent.children.findIndex((c) => c.id === targetId);
+  if (targetIndex < 0) {
+    targetParent.children.push(movingNode);
+  } else {
+    // 同じフォルダ内で、前にあったものを後ろに持っていくときのズレ補正
+    if (fromParent === targetParent && fromIndex < targetIndex) {
+      targetIndex -= 1;
+    }
+    if (!before) {
+      targetIndex += 1;
+    }
+    targetParent.children.splice(targetIndex, 0, movingNode);
+  }
+
+  rebuildFlatBookmarksFromTree();
+  saveBookmarks();
+}
+
+// 任意のノードを「ルート直下」の指定インデックスへ移動（フォルダの外に出す用）
+function moveRootBookmarkToIndex(nodeId, targetIndex) {
+  if (!bookmarkTree) return;
+  if (!Array.isArray(bookmarkTree.children)) {
+    bookmarkTree.children = [];
+  }
+
+  const info = findBookmarkNodeAndParentById(bookmarkTree, nodeId);
+  if (!info) return;
+
+  const fromParent = info.parent || bookmarkTree;
+  if (!Array.isArray(fromParent.children)) return;
+
+  const fromIndex = fromParent.children.findIndex((c) => c.id === nodeId);
+  if (fromIndex < 0) return;
+
+  const [movingNode] = fromParent.children.splice(fromIndex, 1);
+
+  let idx = targetIndex;
+  if (!Number.isFinite(idx)) {
+    idx = bookmarkTree.children.length;
+  }
+  idx = Math.max(0, Math.min(idx, bookmarkTree.children.length));
+
+  bookmarkTree.children.splice(idx, 0, movingNode);
+
+  rebuildFlatBookmarksFromTree();
+  saveBookmarks();
+}
+
+// ブックマークをフォルダの中へ移動する
+function moveBookmarkIntoFolder(nodeId, folderId) {
+  if (!bookmarkTree || !nodeId || !folderId || nodeId === folderId) return;
+
+  // まず移動対象ノードをツリーから取り外す
+  let removedNode = null;
+
+  function detach(node) {
+    if (!node || node.type !== "folder" || !Array.isArray(node.children)) return;
+    const newChildren = [];
+    for (const child of node.children) {
+      if (child.id === nodeId) {
+        removedNode = child;
+        continue;
+      }
+      if (child.type === "folder") {
+        detach(child);
+      }
+      newChildren.push(child);
+    }
+    node.children = newChildren;
+  }
+
+  detach(bookmarkTree);
+  if (!removedNode) return;
+
+  // 移動先フォルダを探す
+  const dest = findBookmarkNodeById(bookmarkTree, folderId);
+  if (!dest || dest.type !== "folder") return;
+
+  if (!Array.isArray(dest.children)) {
+    dest.children = [];
+  }
+
+  // 末尾に追加（フォルダ内のどこに入れるかはとりあえず最後）
+  dest.children.push(removedNode);
+
+  // 反映
+  rebuildFlatBookmarksFromTree();
+  saveBookmarks();
+}
+
+// 新しいフォルダをルート直下に追加
+async function createRootBookmarkFolder() {
+  if (!bookmarkTree) {
+    bookmarkTree = createEmptyBookmarkTree();
+  }
+  if (!Array.isArray(bookmarkTree.children)) {
+    bookmarkTree.children = [];
+  }
+
+  const result = await openBookmarkDialog({
+    title: "フォルダを追加",
+    fields: [
+      {
+        name: "title",
+        label: "フォルダ名",
+        placeholder: "新しいフォルダ",
+        defaultValue: "新しいフォルダ",
+      },
+    ],
+  });
+
+  if (!result) return;
+  const name = (result.title || "").trim();
+  if (!name) return;
+
+  bookmarkTree.children.push({
+    id: generateBookmarkId(),
+    type: "folder",
+    title: name,
+    children: [],
+  });
+
+  rebuildFlatBookmarksFromTree();
+  saveBookmarks();
+  renderBookmarkTreePane();
+  renderBookmarkBar();
+  syncBookmarkStar();
+}
+
+// 指定ノードと同じ階層にフォルダを追加
+async function createSiblingBookmarkFolder(targetId) {
+  if (!bookmarkTree || !targetId) return;
+
+  const found = findBookmarkNodeAndParentById(bookmarkTree, targetId);
+  if (!found) return;
+
+  const { node, parent } = found;
+  const baseFolder =
+    parent && parent.type === "folder" ? parent : bookmarkTree;
+
+  if (!Array.isArray(baseFolder.children)) {
+    baseFolder.children = [];
+  }
+
+  const result = await openBookmarkDialog({
+    title: "フォルダを追加",
+    fields: [
+      {
+        name: "title",
+        label: "フォルダ名",
+        placeholder: "新しいフォルダ",
+        defaultValue: "新しいフォルダ",
+      },
+    ],
+  });
+
+  if (!result) return;
+  const name = (result.title || "").trim();
+  if (!name) return;
+
+  const newFolder = {
+    id: generateBookmarkId(),
+    type: "folder",
+    title: name,
+    children: [],
+  };
+
+  const index = baseFolder.children.findIndex((c) => c.id === node.id);
+  const insertIndex = index >= 0 ? index + 1 : baseFolder.children.length;
+  baseFolder.children.splice(insertIndex, 0, newFolder);
+
+  rebuildFlatBookmarksFromTree();
+  saveBookmarks();
+  renderBookmarkTreePane();
+  renderBookmarkBar();
+  syncBookmarkStar();
+}
+
+// ノード編集
+async function editBookmarkNodeById(id) {
+  if (!bookmarkTree || !id) return;
+
+  const found = findBookmarkNodeAndParentById(bookmarkTree, id);
+  if (!found) return;
+
+  const { node } = found;
+
+  if (node.type === "folder") {
+    const result = await openBookmarkDialog({
+      title: "フォルダを編集",
+      fields: [
+        {
+          name: "title",
+          label: "フォルダ名",
+          placeholder: "フォルダ名",
+          defaultValue: node.title || "",
+        },
+      ],
+    });
+    if (!result) return;
+    const newTitle = (result.title || "").trim();
+    if (!newTitle) return;
+
+    node.title = newTitle;
+  } else if (node.type === "item") {
+    const result = await openBookmarkDialog({
+      title: "ブックマークを編集",
+      fields: [
+        {
+          name: "title",
+          label: "タイトル",
+          placeholder: "タイトル",
+          defaultValue: node.title || "",
+        },
+        {
+          name: "url",
+          label: "URL",
+          placeholder: "https://example.com/",
+          defaultValue: node.url || "",
+        },
+      ],
+    });
+    if (!result) return;
+
+    const newTitle = (result.title || "").trim();
+    const newUrl = (result.url || "").trim();
+    if (!newTitle || !newUrl) return;
+
+    node.title = newTitle;
+    node.url = newUrl;
+  }
+
+  rebuildFlatBookmarksFromTree();
+  saveBookmarks();
+  renderBookmarkTreePane();
+  renderBookmarkBar();
+  syncBookmarkStar();
+}
+
+// ===== URL欄 ＋ ☆ ボタンの同期 =====
+
+// URL欄の値だけ同期
+function syncSidebarUrlInput() {
+  const input = document.getElementById("sidebar-url-input");
+  if (!input) return;
+
+  // SplitView 中は常に空欄にする（有効/無効は別関数で制御）
+  if (window.splitCanvasMode) {
+    input.value = "";
+    return;
+  }
+
+  const tab = getActiveTab();
+  input.value = tab && tab.url ? tab.url : "";
+}
+
+// ☆ボタンの見た目を現在タブのURLに合わせて更新
+function syncBookmarkStar() {
+  const sidebarBookmarkBtn = document.getElementById("btn-sidebar-bookmark");
+  if (!sidebarBookmarkBtn) return;
+
+  // SplitView 中は URL欄も止まってるので、見た目だけ初期状態に
+  if (window.splitCanvasMode) {
+    sidebarBookmarkBtn.textContent = "☆";
+    sidebarBookmarkBtn.classList.remove("is-bookmarked");
+    return;
+  }
+
+  const tab = getActiveTab();
+  const url = tab && tab.url ? tab.url : "";
+
+  if (isUrlBookmarked(url)) {
+    sidebarBookmarkBtn.textContent = "★";
+    sidebarBookmarkBtn.classList.add("is-bookmarked");
+  } else {
+    sidebarBookmarkBtn.textContent = "☆";
+    sidebarBookmarkBtn.classList.remove("is-bookmarked");
+  }
+}
+
+// URL欄＋☆ボタンをまとめて同期
+function syncUrlAndBookmarkUI() {
+  syncSidebarUrlInput();
+  syncBookmarkStar();
+}
+
+// ===== ☆クリックでブックマーク追加/削除 =====
+
+if (sidebarBookmarkBtn) {
+  sidebarBookmarkBtn.addEventListener("click", () => {
+    // SplitView 中は何もしない
+    if (window.splitCanvasMode) return;
+
+    const tab = getActiveTab();
+    if (!tab || !tab.url) return;
+
+    const url = tab.url;
+    const title = tab.title || deriveTitleFromUrl(url);
+
+    if (isUrlBookmarked(url)) {
+      // 登録済み → 削除
+      removeBookmarkByUrl(url);
+    } else {
+      // 未登録 → 追加
+      addBookmarkToRoot(url, title);
+    }
+
+    // ☆の見た目とバーを更新
+    syncBookmarkStar();
+    renderBookmarkBar();
+    if (bookmarkModeVisible) {
+      renderBookmarkTreePane();
+    }
+  });
+}
+
+// ===== ブックマークバーの描画 =====
+
+function renderBookmarkBar() {
+  const container = document.getElementById("bookmark-bar");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  if (!Array.isArray(bookmarks) || bookmarks.length === 0) {
+    return;
+  }
+
+  bookmarks.forEach((bm) => {
+    if (!bm || !bm.url) return;
+
+    const btn = document.createElement("button");
+    btn.className = "bookmark-item";
+
+    // favicon 取得（Googleのfavicon API）
+    const icon = document.createElement("img");
+    icon.className = "bookmark-favicon";
+    const domain = new URL(bm.url).hostname;
+    icon.src = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+
+    // テキスト
+    const label = document.createElement("span");
+    label.className = "bookmark-label";
+    label.textContent = bm.title || deriveTitleFromUrl(bm.url);
+
+    btn.appendChild(icon);
+    btn.appendChild(label);
+
+    btn.onclick = () => {
+      const resolved = resolveUrlOrSearch(bm.url);
+      if (!resolved) return;
+
+      const tab = getActiveTab();
+      if (tab) {
+        const wv = getWebviewForTab(tab);
+        if (wv) {
+          try {
+            wv.src = resolved;
+          } catch (err) {
+            console.error("bookmark navigate error", err);
+          }
+        }
+      } else {
+        createTab(resolved, true);
+      }
+    };
+
+    container.appendChild(btn);
+  });
+}
+
+// ===== ブックマークツリーの描画（左サイドバーの小窓） =====
+
+// ブックマークモードの表示状態
+let bookmarkModeVisible = false;
+
+// フォルダ用 SVG アイコン（閉じているとき）
+const BOOKMARK_FOLDER_ICON_CLOSED = `
+  <svg viewBox="0 0 16 16" class="bookmark-folder-icon-svg">
+    <path d="M2 3h4l2 2h6v8H2z"></path>
+  </svg>
+`;
+
+// フォルダ用 SVG アイコン（開いているとき）
+const BOOKMARK_FOLDER_ICON_OPEN = `
+  <svg viewBox="0 0 16 16" class="bookmark-folder-icon-svg">
+    <path d="M2 4h4l2 2h6l-2 7H2z"></path>
+  </svg>
+`;
+
+// ブックマークモード時のレイアウト制御
+function applyBookmarkModeLayout() {
+  const hide = bookmarkModeVisible;
+
+  // URL欄 + ☆ + DLボタン
+  const urlRow = document.querySelector(".sidebar-url-row");
+  if (urlRow) urlRow.style.display = hide ? "none" : "";
+
+  // ブックマークツリーパネル
+  if (bookmarkModePane) {
+    bookmarkModePane.style.display = hide ? "block" : "none";
+  }
+
+  // NewTab / SplitView ボタン
+  const newTabBtn = document.getElementById("btn-new-tab");
+  if (newTabBtn) newTabBtn.style.display = hide ? "none" : "";
+
+  const splitViewBtn = document.getElementById("btn-split-view");
+  if (splitViewBtn) splitViewBtn.style.display = hide ? "none" : "";
+
+  // 線の制御
+  // .sidebar-divider が複数ある場合：
+  //   0番目 … 上の線（常に表示）
+  //   1番目以降 … 下の線（ブックマークモードのときだけ非表示）
+  const dividers = document.querySelectorAll(".sidebar-divider");
+  if (dividers.length > 0) {
+    dividers.forEach((divider, index) => {
+      if (index === 0) {
+        // 一番上の線は常に表示
+        divider.style.display = "";
+      } else {
+        // それ以外はブックマークモードのときだけ消す
+        divider.style.display = hide ? "none" : "";
+      }
+    });
+  }
+}
+
+// フォルダ開閉用 SVG アイコン
+function createFolderToggleIconSvg(isOpen) {
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+
+  svg.setAttribute("viewBox", "0 0 16 16");
+  svg.setAttribute("width", "16");
+  svg.setAttribute("height", "16");
+
+  svg.classList.add("bookmark-tree-folder-icon");
+
+  const path = document.createElementNS(svgNS, "path");
+
+  // 開閉状態でフォルダを切り替え
+  if (isOpen) {
+    // 開いたフォルダ
+    path.setAttribute(
+      "d",
+      "M2 6h6l2 2h8l-2.5 9H2z"
+    );
+  } else {
+    // 閉じたフォルダ
+    path.setAttribute(
+      "d",
+      "M2 5h6l2 2h8v10H2z"
+    );
+  }
+
+  path.setAttribute("fill", "currentColor");
+  svg.appendChild(path);
+  return svg;
+}
+
+function renderBookmarkTreePane() {
+  if (!bookmarkModePane) return;
+
+  bookmarkModePane.innerHTML = "";
+
+  if (!bookmarkTree || !Array.isArray(bookmarkTree.children)) {
+    return;
+  }
+
+  const rootLabel = document.createElement("div");
+  rootLabel.className = "bookmark-tree-root-label";
+  rootLabel.textContent = bookmarkTree.title || "ブックマーク";
+
+  const list = buildBookmarkTreeList(bookmarkTree.children, 0);
+
+  bookmarkModePane.appendChild(rootLabel);
+  bookmarkModePane.appendChild(list);
+}
+
+// ===== ブックマークツリー描画 =====
+function buildBookmarkTreeList(nodes, depth = 0) {
+  const ul = document.createElement("ul");
+  ul.className = depth === 0 ? "bookmark-tree-root" : "bookmark-tree-children";
+
+  if (!Array.isArray(nodes)) return ul;
+
+  nodes.forEach((node) => {
+    if (!node || !node.id) return;
+
+    const li = document.createElement("li");
+    li.className = "bookmark-tree-item";
+
+    const row = document.createElement("div");
+    row.className = "bookmark-tree-row";
+    row.dataset.bmId = node.id;
+    if (depth === 0) {
+      // ルート直下だけ depth=0 を付けておく（サイドバー全体ドロップ用）
+      row.dataset.bmDepth = "0";
+    }
+
+    // ===== フォルダ =====
+    if (node.type === "folder") {
+      row.classList.add("bookmark-tree-row-folder");
+
+      // フォルダアイコン（ここだけで開閉）
+      const toggleBtn = document.createElement("button");
+      toggleBtn.type = "button";
+      toggleBtn.className = "bookmark-folder-toggle-btn";
+      toggleBtn.innerHTML = createFolderToggleIconSvg(true);
+      row.appendChild(toggleBtn);
+
+      const titleSpan = document.createElement("span");
+      titleSpan.className = "bookmark-tree-title";
+      titleSpan.textContent = node.title || "フォルダ";
+      row.appendChild(titleSpan);
+
+      // 右クリックメニュー（フォルダ）
+      row.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        hideContentMenu();
+        showBookmarkContextMenu(e.clientX, e.clientY, node.id);
+      });
+
+      // 並べ替え用 DnD（フォルダ自身もドラッグ対象）
+      setupBookmarkRowDnD(row, node.id);
+
+      li.appendChild(row);
+
+      // 子要素
+      const childrenWrap = document.createElement("div");
+      childrenWrap.className = "bookmark-tree-folder-children";
+
+      if (Array.isArray(node.children) && node.children.length > 0) {
+        const childList = buildBookmarkTreeList(node.children, depth + 1);
+        childrenWrap.appendChild(childList);
+      }
+      li.appendChild(childrenWrap);
+
+      // 開閉状態
+      let isOpen = true;
+      function updateFolderOpen() {
+        childrenWrap.style.display = isOpen ? "" : "none";
+        toggleBtn.innerHTML = createFolderToggleIconSvg(isOpen);
+      }
+
+      // ★ フォルダの開閉はアイコンのみで行う
+      toggleBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        isOpen = !isOpen;
+        updateFolderOpen();
+      });
+
+      updateFolderOpen();
+    }
+    // ===== アイテム =====
+    else if (node.type === "item") {
+      row.classList.add("bookmark-tree-row-item");
+
+      const icon = createBookmarkFaviconElement(node.url);
+      row.appendChild(icon);
+
+      const titleSpan = document.createElement("span");
+      titleSpan.className = "bookmark-tree-title";
+      titleSpan.textContent =
+        node.title || (node.url ? deriveTitleFromUrl(node.url) : "");
+      row.appendChild(titleSpan);
+
+      // 左クリックで開く
+      row.addEventListener("click", () => {
+        if (!node.url) return;
+        const resolved = resolveUrlOrSearch(node.url);
+        if (!resolved) return;
+
+        const tab = getActiveTab();
+        if (tab) {
+          const wv = getWebviewForTab(tab);
+          if (wv) {
+            try {
+              wv.src = resolved;
+            } catch (err) {
+              console.error("set webview src error", err);
+            }
+          }
+        } else {
+          createTab(resolved, true);
+        }
+      });
+
+      // 右クリックメニュー（アイテム）
+      row.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        hideContentMenu();
+        showBookmarkContextMenu(e.clientX, e.clientY, node.id);
+      });
+
+      // 並べ替え用 DnD
+      setupBookmarkRowDnD(row, node.id);
+
+      li.appendChild(row);
+    }
+
+    ul.appendChild(li);
+  });
+
+  return ul;
+}
+
+function setupBookmarkRowDnD(row, nodeId) {
+  row.draggable = true;
+
+  row.addEventListener("dragstart", (e) => {
+    draggingBookmarkId = nodeId;
+    const dt = e.dataTransfer;
+    if (dt) {
+      dt.effectAllowed = "move";
+      dt.setData("text/plain", String(nodeId));
+    }
+  });
+
+  row.addEventListener("dragend", () => {
+    draggingBookmarkId = null;
+    clearBookmarkDragIndicator();
+  });
+
+  row.addEventListener("dragover", (e) => {
+    if (!draggingBookmarkId || draggingBookmarkId === nodeId) return;
+    e.preventDefault();
+
+    const targetNode =
+      bookmarkTree && findBookmarkNodeById(bookmarkTree, nodeId);
+
+    let dropPos = "before";
+
+    if (targetNode && targetNode.type === "folder") {
+      // フォルダ行に乗っているときは、必ず「中に入れる」
+      dropPos = "into";
+    } else {
+      // 通常アイテム：上下で before / after
+      const rect = row.getBoundingClientRect();
+      dropPos = e.clientY < rect.top + rect.height / 2 ? "before" : "after";
+    }
+
+    clearBookmarkDragIndicator();
+    bookmarkDragOverRow = row;
+
+    // 見た目
+    if (dropPos === "before") {
+      row.style.borderTop = "2px solid rgba(255,255,255,0.9)";
+      row.style.borderBottom = "";
+    } else if (dropPos === "after") {
+      row.style.borderTop = "";
+      row.style.borderBottom = "2px solid rgba(255,255,255,0.9)";
+    } else {
+      // into のときは上下両方に線
+      row.style.borderTop = "2px solid rgba(255,255,255,0.9)";
+      row.style.borderBottom = "2px solid rgba(255,255,255,0.9)";
+    }
+
+    row.dataset.bmDropPos = dropPos;
+  });
+
+  row.addEventListener("dragleave", (e) => {
+    if (e.relatedTarget && row.contains(e.relatedTarget)) return;
+    clearBookmarkDragIndicator();
+  });
+
+  row.addEventListener("drop", (e) => {
+    if (!draggingBookmarkId || draggingBookmarkId === nodeId) {
+      clearBookmarkDragIndicator();
+      return;
+    }
+
+    e.preventDefault();
+
+    const targetNode =
+      bookmarkTree && findBookmarkNodeById(bookmarkTree, nodeId);
+    const dropPos = row.dataset.bmDropPos || "before";
+
+    if (targetNode && targetNode.type === "folder") {
+      // フォルダ行 → フォルダの中に移動
+      moveBookmarkIntoFolder(draggingBookmarkId, nodeId);
+    } else {
+      // 通常行 → ルート並び替え
+      const before = dropPos !== "after";
+      moveRootBookmarkRelative(draggingBookmarkId, nodeId, before);
+    }
+
+    draggingBookmarkId = null;
+    clearBookmarkDragIndicator();
+
+    // 反映
+    renderBookmarkTreePane();
+    renderBookmarkBar();
+    syncBookmarkStar();
+  });
+}
 
 // ===== ダウンロードステータス（URL欄右のアイコン制御） =====
 const downloadStatusBtn = document.getElementById("download-status-btn");
@@ -509,6 +1701,8 @@ function loadTabsState() {
     updateTitlebarModeButtonStyle();
     updateSplitViewButtonStyle();
     updateSidebarUrlInputEnabled();
+    updateBookmarkModeButtonStyle();
+    applyBookmarkModeLayout();
 
     return true;
   } catch (e) {
@@ -594,6 +1788,12 @@ function updateSidebarModeButtonStyle() {
 function updateTitlebarModeButtonStyle() {
   if (!btnToggleTitlebarMode) return;
   setToggleButtonVisual(btnToggleTitlebarMode, titlebarFixedMode);
+}
+
+// ブックマークモード切り替えボタンの見た目
+function updateBookmarkModeButtonStyle() {
+  if (!btnToggleBookmarkMode) return;
+  setToggleButtonVisual(btnToggleBookmarkMode, bookmarkModeVisible);
 }
 
 function updateRightSidebarWidthStyles() {
@@ -868,6 +2068,179 @@ function renderBookmarkBar() {
   });
 }
 
+// ===== ブックマークツリーの描画（左サイドバーの小窓） =====
+
+function renderBookmarkTreePane() {
+  if (!bookmarkModePane) return;
+
+  bookmarkModePane.innerHTML = "";
+
+  if (!bookmarkTree || !Array.isArray(bookmarkTree.children)) {
+    return;
+  }
+
+  const rootLabel = document.createElement("div");
+  rootLabel.className = "bookmark-tree-root-label";
+  rootLabel.textContent = bookmarkTree.title || "ブックマーク";
+
+  const list = buildBookmarkTreeList(bookmarkTree.children, 0);
+
+  bookmarkModePane.appendChild(rootLabel);
+  bookmarkModePane.appendChild(list);
+}
+
+if (bookmarkModePane) {
+  bookmarkModePane.addEventListener("contextmenu", (e) => {
+    // ブックマークモードじゃなければ何もしない
+    if (!bookmarkModeVisible) return;
+
+    // アイテム上なら、そのアイテム側の handler が処理する
+    const row = e.target.closest && e.target.closest(".bookmark-tree-row");
+    if (row) return;
+
+    e.preventDefault();
+    hideContentMenu();
+    showBookmarkContextMenu(e.clientX, e.clientY, null);
+  });
+}
+
+function buildBookmarkTreeList(nodes, depth) {
+  const ul = document.createElement("ul");
+  ul.className = "bookmark-tree-level depth-" + depth;
+
+  nodes.forEach((node) => {
+    if (!node) return;
+
+    const li = document.createElement("li");
+    li.className = "bookmark-tree-node bookmark-type-" + node.type;
+
+    const row = document.createElement("div");
+    row.className = "bookmark-tree-row";
+
+    if (node.type === "folder") {
+      // ---- フォルダ行 ----
+      let isOpen = true;
+
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "bookmark-tree-folder-toggle";
+      toggle.appendChild(createFolderToggleIconSvg(isOpen));
+
+      const label = document.createElement("span");
+      label.className = "bookmark-tree-label";
+      label.textContent = node.title || "フォルダ";
+
+      row.appendChild(toggle);
+      row.appendChild(label);
+      row.classList.add("is-folder");
+      li.appendChild(row);
+
+      let childrenList = null;
+      if (Array.isArray(node.children) && node.children.length > 0) {
+        childrenList = buildBookmarkTreeList(node.children, depth + 1);
+        childrenList.classList.add("bookmark-tree-children");
+        li.appendChild(childrenList);
+      }
+
+      function setOpen(next) {
+        isOpen = !!next;
+        if (childrenList) {
+          childrenList.style.display = isOpen ? "block" : "none";
+        }
+        toggle.innerHTML = "";
+        toggle.appendChild(createFolderToggleIconSvg(isOpen));
+        li.classList.toggle("is-open", isOpen);
+      }
+
+      const toggleHandler = (ev) => {
+        ev.stopPropagation();
+        setOpen(!isOpen);
+      };
+
+      // クリック／ダブルクリックで開閉
+      toggle.addEventListener("click", toggleHandler);
+      label.addEventListener("click", toggleHandler);
+      row.addEventListener("dblclick", toggleHandler);
+
+      // 右クリックメニュー（フォルダ）
+      row.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        hideContentMenu();
+        showBookmarkContextMenu(e.clientX, e.clientY, node.id);
+      });
+
+      // 初期状態は開いた状態
+      setOpen(true);
+    } else if (node.type === "item") {
+      // ---- 普通のブックマーク ----
+      const icon = document.createElement("img");
+      icon.className = "bookmark-tree-favicon";
+      if (node.url) {
+        icon.src = `https://www.google.com/s2/favicons?domain=${node.url}&sz=16`;
+      }
+
+      const label = document.createElement("span");
+      label.className = "bookmark-tree-label";
+      label.textContent =
+        node.title || (node.url ? deriveTitleFromUrl(node.url) : "リンク");
+
+      row.appendChild(icon);
+      row.appendChild(label);
+      row.classList.add("is-item");
+      row.style.cursor = "pointer";
+
+      // 左クリックでその URL を開く
+      row.addEventListener("click", () => {
+        if (!node.url) return;
+        const resolved = resolveUrlOrSearch(node.url);
+        if (!resolved) return;
+
+        const tab = getActiveTab();
+        if (tab) {
+          const wv = getWebviewForTab(tab);
+          if (wv) {
+            try {
+              wv.src = resolved;
+            } catch (err) {
+              console.error("set webview src error", err);
+            }
+          }
+        } else {
+          createTab(resolved, true);
+        }
+      });
+
+      // 右クリックメニュー（アイテム）
+      row.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        hideContentMenu();
+        showBookmarkContextMenu(e.clientX, e.clientY, node.id);
+      });
+
+      li.appendChild(row);
+    }
+
+    // （ルート直下だけ data-bm-depth="0" を付けて、既存の「サイドバー全体ドロップ」のロジックをそのまま使う）
+    row.dataset.bmId = String(node.id);
+    if (depth === 0) {
+      row.dataset.bmDepth = "0";
+    } else {
+      // 深い階層はサイドバー境界判定から除外したいので消しておく
+      if ("bmDepth" in row.dataset) {
+        delete row.dataset.bmDepth;
+      }
+    }
+    if (typeof setupBookmarkRowDnD === "function") {
+      setupBookmarkRowDnD(row, node.id);
+    }
+
+    // li をリストに追加
+    ul.appendChild(li);
+  });
+
+  return ul;
+}
+
 // --- 左サイドバーのタブ並び替え用ドラッグ状態 ---
 let sidebarDraggingTabId = null;
 let sidebarDragOverItem = null;
@@ -982,91 +2355,187 @@ function setupSidebarContainerDnD() {
   sidebarContainerDnDInitialized = true;
 
   sidebar.addEventListener("dragover", (e) => {
-    if (sidebarDraggingTabId == null) return;
+    // ==== タブ並び替え中 ====
+    if (sidebarDraggingTabId != null) {
+      const items = Array.from(tabListEl.querySelectorAll(".tab-item"));
+      if (items.length === 0) return;
 
-    const items = Array.from(tabListEl.querySelectorAll(".tab-item"));
-    if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
 
-    const first = items[0];
-    const last = items[items.length - 1];
+      const y = e.clientY;
+      const firstRect = first.getBoundingClientRect();
+      const lastRect = last.getBoundingClientRect();
+
+      clearSidebarDragIndicator();
+
+      // 一番上より上 → 先頭
+      if (y < firstRect.top) {
+        e.preventDefault();
+        sidebarDragOverItem = first;
+        first.style.borderTop = "2px solid rgba(255,255,255,0.9)";
+        first.dataset.dropPos = "before";
+        return;
+      }
+
+      // 一番下より下 → 末尾
+      if (y > lastRect.bottom) {
+        e.preventDefault();
+        sidebarDragOverItem = last;
+        last.style.borderBottom = "2px solid rgba(255,255,255,0.9)";
+        last.dataset.dropPos = "after";
+        return;
+      }
+
+      // その間は各 tab-item の dragover が処理
+      return;
+    }
+
+    // ==== ブックマーク並び替え中 ====
+    if (!bookmarkModeVisible || !bookmarkModePane || !draggingBookmarkId)
+      return;
+
+    const rows = Array.from(
+      bookmarkModePane.querySelectorAll(
+        ".bookmark-tree-row[data-bm-depth='0']"
+      )
+    );
+    if (rows.length === 0) return;
+
+    const first = rows[0];
+    const last = rows[rows.length - 1];
 
     const y = e.clientY;
     const firstRect = first.getBoundingClientRect();
     const lastRect = last.getBoundingClientRect();
 
-    // 一度既存のガイドは消す
-    clearSidebarDragIndicator();
+    clearBookmarkDragIndicator();
 
-    // ▼ 一番上より上 → 先頭に入れるガイド
+    // 一番上より上 → 先頭に入れるガイド
     if (y < firstRect.top) {
       e.preventDefault();
-      sidebarDragOverItem = first;
+      bookmarkDragOverRow = first;
       first.style.borderTop = "2px solid rgba(255,255,255,0.9)";
-      first.dataset.dropPos = "before";
+      first.dataset.bmDropPos = "before";
       return;
     }
 
-    // ▼ 一番下より下 → 末尾に入れるガイド
+    // 一番下より下 → 末尾に入れるガイド
     if (y > lastRect.bottom) {
       e.preventDefault();
-      sidebarDragOverItem = last;
+      bookmarkDragOverRow = last;
       last.style.borderBottom = "2px solid rgba(255,255,255,0.9)";
-      last.dataset.dropPos = "after";
+      last.dataset.bmDropPos = "after";
       return;
     }
-
-    // その間（タブの上）は各 tab-item の dragover が処理する
+    // その間は各 bookmark-row の dragover が処理
   });
 
   sidebar.addEventListener("drop", (e) => {
-    if (sidebarDraggingTabId == null) return;
+    // ==== タブ並び替え完了 ====
+    if (sidebarDraggingTabId != null) {
+      const items = Array.from(tabListEl.querySelectorAll(".tab-item"));
+      if (items.length === 0) {
+        sidebarDraggingTabId = null;
+        clearSidebarDragIndicator();
+        return;
+      }
 
-    const items = Array.from(tabListEl.querySelectorAll(".tab-item"));
-    if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
 
-    const first = items[0];
-    const last = items[items.length - 1];
+      const y = e.clientY;
+      const firstRect = first.getBoundingClientRect();
+      const lastRect = last.getBoundingClientRect();
+
+      let fromId = sidebarDraggingTabId;
+      let fromIndex = tabs.findIndex((t) => t.id === fromId);
+      if (fromIndex === -1) {
+        sidebarDraggingTabId = null;
+        clearSidebarDragIndicator();
+        return;
+      }
+
+      let insertIndex = null;
+
+      if (y < firstRect.top) {
+        insertIndex = 0;
+      } else if (y > lastRect.bottom) {
+        insertIndex = tabs.length;
+      } else {
+        return;
+      }
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const [moved] = tabs.splice(fromIndex, 1);
+      if (insertIndex > fromIndex) insertIndex--;
+      tabs.splice(insertIndex, 0, moved);
+
+      sidebarDraggingTabId = null;
+      clearSidebarDragIndicator();
+
+      renderTabs();
+      saveTabsState();
+      return;
+    }
+
+    // ==== ブックマーク並び替え完了 ====
+    if (!bookmarkModeVisible || !draggingBookmarkId) return;
+
+    const rows = Array.from(
+      bookmarkModePane.querySelectorAll(
+        ".bookmark-tree-row[data-bm-depth='0']"
+      )
+    );
+    if (rows.length === 0) {
+      draggingBookmarkId = null;
+      clearBookmarkDragIndicator();
+      return;
+    }
+
+    const first = rows[0];
+    const last = rows[rows.length - 1];
 
     const y = e.clientY;
     const firstRect = first.getBoundingClientRect();
     const lastRect = last.getBoundingClientRect();
 
-    let fromId = sidebarDraggingTabId;
-    let fromIndex = tabs.findIndex((t) => t.id === fromId);
-    if (fromIndex === -1) {
-      sidebarDraggingTabId = null;
-      clearSidebarDragIndicator();
+    const children =
+      bookmarkTree && Array.isArray(bookmarkTree.children)
+        ? bookmarkTree.children
+        : null;
+    if (!children) {
+      draggingBookmarkId = null;
+      clearBookmarkDragIndicator();
       return;
     }
 
     let insertIndex = null;
 
-    // ▼ サイドバー内で、一番上より上の位置にドロップ → 先頭
+    // サイドバー内で「一番上より上」→ 先頭
     if (y < firstRect.top) {
       insertIndex = 0;
     }
-    // ▼ サイドバー内で、一番下より下の位置にドロップ → 末尾
+    // 「一番下より下」→ 末尾
     else if (y > lastRect.bottom) {
-      insertIndex = tabs.length;
+      insertIndex = children.length;
     } else {
-      // 中央あたりは各 tab-item の drop が処理するのでスルー
       return;
     }
 
     e.preventDefault();
     e.stopPropagation();
 
-    const [moved] = tabs.splice(fromIndex, 1);
+    moveRootBookmarkToIndex(draggingBookmarkId, insertIndex);
 
-    if (insertIndex > fromIndex) insertIndex--;
+    draggingBookmarkId = null;
+    clearBookmarkDragIndicator();
 
-    tabs.splice(insertIndex, 0, moved);
-
-    sidebarDraggingTabId = null;
-    clearSidebarDragIndicator();
-
-    renderTabs();
-    saveTabsState();
+    renderBookmarkTreePane();
+    renderBookmarkBar();
+    syncBookmarkStar();
   });
 }
 
@@ -1482,33 +2951,6 @@ function restoreClosedTab() {
   tabs.push(tab);
   setActiveTab(id);
   saveTabsState();
-}
-
-// ☆ボタンクリック → 現在タブのURLをブックマークに追加 / 削除
-if (sidebarBookmarkBtn) {
-  sidebarBookmarkBtn.addEventListener("click", () => {
-    if (splitCanvasMode) return;
-
-    const tab = getActiveTab();
-    if (!tab || !tab.url) return;
-
-    const url = tab.url;
-    const title = tab.title || deriveTitleFromUrl(url);
-
-    // すでにあれば削除、なければ追加
-    const idx =
-      Array.isArray(bookmarks) && bookmarks.findIndex((b) => b && b.url === url);
-    if (idx >= 0) {
-      bookmarks.splice(idx, 1);
-    } else {
-      if (!Array.isArray(bookmarks)) bookmarks = [];
-      bookmarks.push({ url, title });
-    }
-
-    saveBookmarks();
-    renderBookmarkBar();
-    syncBookmarkStar();
-  });
 }
 
 // URL欄 Enter でナビゲーション
@@ -1930,6 +3372,8 @@ function restoreWebviewPointerEventsForMenu() {
 // 右クリックされたタブID（なければ null）
 let contentMenu = null;
 let contentMenuTargetTabId = null;
+// ブックマーク用ターゲット
+let bookmarkContextTargetId = null;
 
 function ensureContentMenu() {
   if (contentMenu) return;
@@ -1969,6 +3413,75 @@ function addContentMenuItem(label, handler) {
   });
 
   contentMenu.appendChild(item);
+}
+
+function showBookmarkContextMenu(x, y, nodeId = null) {
+  ensureContentMenu();
+  contentMenu.innerHTML = "";
+
+  bookmarkContextTargetId = nodeId || null;
+
+  if (nodeId) {
+    const node =
+      bookmarkTree && bookmarkContextTargetId
+        ? findBookmarkNodeById(bookmarkTree, bookmarkContextTargetId)
+        : null;
+
+    // アイテムなら「新しいタブで開く」
+    if (node && node.type === "item" && node.url) {
+      addContentMenuItem("新しいタブで開く", () => {
+        const resolved = resolveUrlOrSearch(node.url);
+        if (!resolved) return;
+        createTab(resolved, true);
+      });
+    }
+
+    // 共通：編集
+    addContentMenuItem("編集", () => {
+      editBookmarkNodeById(nodeId);
+      renderBookmarkTreePane();
+      renderBookmarkBar();
+      syncBookmarkStar();
+    });
+
+    // 共通：削除
+    addContentMenuItem("削除", () => {
+      if (!window.confirm("このブックマークを削除しますか？")) return;
+      removeBookmarkNodeById(nodeId);
+      renderBookmarkTreePane();
+      renderBookmarkBar();
+      syncBookmarkStar();
+    });
+
+    // 同じ階層にフォルダ追加
+    addContentMenuItem("フォルダを追加", () => {
+      createSiblingBookmarkFolder(nodeId);
+      renderBookmarkTreePane();
+    });
+  } else {
+    // 空き領域 → ルート直下にフォルダ追加
+    addContentMenuItem("フォルダを追加", () => {
+      createRootBookmarkFolder();
+      renderBookmarkTreePane();
+    });
+  }
+
+  const menuWidth = 180;
+  const menuHeight = contentMenu.childElementCount * 26 + 8;
+
+  let posX = x;
+  let posY = y;
+
+  if (posX + menuWidth > window.innerWidth) {
+    posX = window.innerWidth - menuWidth - 4;
+  }
+  if (posY + menuHeight > window.innerHeight) {
+    posY = window.innerHeight - menuHeight - 4;
+  }
+
+  contentMenu.style.left = posX + "px";
+  contentMenu.style.top = posY + "px";
+  contentMenu.style.display = "block";
 }
 
 function performTabHistory(tabId, direction) {
@@ -2087,7 +3600,7 @@ if (window.mindraShortcuts && window.mindraShortcuts.onShortcut) {
     const { type, index, url } = payload || {};
     switch (type) {
       case "new-tab":
-        // ★ SplitView中なら抜けてレイアウト保持
+        // SplitView中なら抜けてレイアウト保持
         exitSplitViewPreserveLayout();
         updateSplitViewButtonStyle();
         createTab("https://www.google.com", true);
@@ -2175,7 +3688,6 @@ if (!loaded) {
   sidebarOpen = true;
   sidebarShrinkMode = true;
   rightSidebarOpen = true;
-  RIGHT_SIDEBAR_WIDTH = 240;
   titlebarFixedMode = true;
 
   // サイドバーを見た目上も「開いた状態」に
@@ -2197,11 +3709,13 @@ updateSidebarModeButtonStyle();
 updateTitlebarModeButtonStyle();
 updateSplitViewButtonStyle();
 updateSidebarUrlInputEnabled();
+updateBookmarkModeButtonStyle();
+applyBookmarkModeLayout();
 
 // 起動時にブックマークをロード＆表示
 loadBookmarks();
 renderBookmarkBar();
-syncBookmarkStar();
+syncUrlAndBookmarkUI();
 
 // 左サイドバーの状態を反映
 if (sidebarShrinkMode) {

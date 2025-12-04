@@ -904,7 +904,7 @@ async function createWindow(profileIdArg) {
   });
 
   if (isDev) {
-    win.webContents.openDevTools({ mode: "detach" });
+    //win.webContents.openDevTools({ mode: "detach" });// debug
   }
 
   win.webContents.setUserAgent(
@@ -934,7 +934,144 @@ async function createWindow(profileIdArg) {
       console.error("[logger] failed to log renderer-crashed:", e);
     }
   });
+
+// --------
+  win.webContents.on(
+    "did-fail-load",
+    (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+      try {
+        logger.logError("did-fail-load", {
+          errorCode,
+          errorDescription,
+          validatedURL,
+          isMainFrame,
+        });
+      } catch (e) {
+        console.error("[logger] failed to log did-fail-load:", e);
+      }
+    }
+  );
+
+  win.webContents.on(
+    "console-message",
+    (_event, level, message, line, sourceId) => {
+      try {
+        logger.logInfo("main-webContents console", {
+          level,
+          message,
+          line,
+          sourceId,
+        });
+      } catch (e) {
+        console.error("[logger] failed to log console-message:", e);
+      }
+    }
+  );
+
+  win.webContents.on("did-attach-webview", (_event, contents) => {
+    attachShortcutsToWebContents(contents);
+
+    const webviewSession = contents.session;
+    initAdblockForSession(webviewSession).catch((e) => {
+      console.error("[adblock] webview init failed:", e);
+    });
+
+    contents.on("did-finish-load", () => {
+      try {
+        const url = contents.getURL() || "";
+        if (/https?:\/\/(www\.)?youtube\.com\//.test(url)) {
+          contents
+            .executeJavaScript(getYouTubeDomAdblockScript(), { world: "main" })
+            .catch(() => {});
+        }
+      } catch {
+        // ignore
+      }
+    });
+
+    contents.on("did-navigate", (_e, url) => {
+      try {
+        addEntry({
+          url,
+          source: "webview",
+        });
+      } catch (e) {
+        console.error("[history] webview did-navigate error:", e);
+      }
+    });
+
+    contents.on("did-navigate-in-page", (_e, url, isMainFrame) => {
+      if (!isMainFrame) return;
+      try {
+        addEntry({
+          url,
+          source: "webview",
+        });
+      } catch (e) {
+        console.error("[history] webview did-navigate-in-page error:", e);
+      }
+    });
+
+    contents.on("page-title-updated", (_e, title) => {
+      try {
+        const url = contents.getURL();
+        if (!url) return;
+        addEntry({
+          url,
+          title,
+          source: "webview",
+        });
+      } catch (e) {
+        console.error("[history] webview page-title-updated error:", e);
+      }
+    });
+
+    contents.setWindowOpenHandler((details) => {
+      const { url } = details;
+
+      try {
+        const u = new URL(url);
+        const host = u.hostname;
+
+        // Google ログイン画面だけは常に別ウィンドウ許可
+        if (
+          host === "accounts.google.com" ||
+          host === "oauth2.googleapis.com"
+        ) {
+          return { action: "allow" };
+        }
+      } catch {
+        // ignore
+      }
+
+      if (url.startsWith("http")) {
+        // ポップアップ無効モード:
+        if (!generalSettingsFlags.enablePopups) {
+          if (!win.isDestroyed()) {
+            win.webContents.send("mindra-shortcut", {
+              type: "new-tab-with-url",
+              url,
+            });
+          }
+          return { action: "deny" };
+        }
+
+        // ポップアップ有効モード:
+        return { action: "allow" };
+      }
+
+      // その他はそのまま
+      return { action: "allow" };
+    });
+  });
+
+  win.on("closed", () => {
+    if (win === mainWindow) {
+      mainWindow = null;
+    }
+  });
 }
+// --------
 
 // renderer からのログ受付
 ipcMain.on("mindra-log", (_event, payload) => {

@@ -2758,7 +2758,9 @@ function createWebviewForTab(tab) {
   const profileId = tab.profileId || DEFAULT_PROFILE_NO;
 
   wv.setAttribute("partition", "persist:profile-" + profileId);
-
+ 
+  wv.setAttribute("allowpopups", "");
+/*
   // ポップアップ制御：設定フラグに連動させる
   try {
     if (generalSettingsFlags && generalSettingsFlags.enablePopups) {
@@ -2771,6 +2773,7 @@ function createWebviewForTab(tab) {
   } catch (e) {
     console.error("apply allowpopups failed", e);
   }
+*/
 
   wv.src = tab.url || "https://www.google.com";
 

@@ -3799,3 +3799,42 @@ window.getSplitWebviews = function () {
 
   return result;
 };
+
+// =========================================================
+// フォーカス＆ショートカット修復パッチ
+// =========================================================
+
+// webview が blur したら即座に focus を戻す
+document.addEventListener('DOMContentLoaded', () => {
+  const webviews = document.querySelectorAll('webview');
+  webviews.forEach(wv => {
+    wv.addEventListener('blur', () => {
+      setTimeout(() => {
+        try { wv.focus(); } catch (e) {}
+      }, 0);
+    });
+  });
+});
+
+// window がキーを受け取ったが webview がフォーカスされてない時 → 転送
+window.addEventListener('keydown', (e) => {
+  const activeWV =
+    document.querySelector('webview.active') ||
+    document.querySelector('webview[style*="visibility: visible"]') ||
+    document.querySelector('webview:last-of-type');
+  if (!activeWV) return;
+
+  // Ctrl/Shift/Alt の修飾キー状態を渡す
+  const modifiers = [];
+  if (e.ctrlKey) modifiers.push('ctrl');
+  if (e.shiftKey) modifiers.push('shift');
+  if (e.altKey) modifiers.push('alt');
+
+  try {
+    activeWV.sendInputEvent({
+      type: 'keyDown',
+      keyCode: e.key,
+      modifiers
+    });
+  } catch (_) {}
+});

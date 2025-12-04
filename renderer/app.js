@@ -91,6 +91,13 @@ window.addEventListener("unhandledrejection", (event) => {
 
 const CONFIG = window.config || {};
 
+// main.js から渡される設定（なければデフォルト値）
+const generalSettingsFlags =
+  (CONFIG && CONFIG.generalSettingsFlags) || {
+    enableAdblock: true,
+    enablePopups: false,
+  };
+
 // main.js から渡された profileId（例: "profile-2"）
 const STARTUP_PROFILE_ID =
   (CONFIG && typeof CONFIG.profileId === "string" && CONFIG.profileId) ||
@@ -2751,7 +2758,19 @@ function createWebviewForTab(tab) {
   const profileId = tab.profileId || DEFAULT_PROFILE_NO;
 
   wv.setAttribute("partition", "persist:profile-" + profileId);
-  wv.setAttribute("allowpopups", "");
+
+  // ポップアップ制御：設定フラグに連動させる
+  try {
+    if (generalSettingsFlags && generalSettingsFlags.enablePopups) {
+      // ポップアップ許可
+      wv.setAttribute("allowpopups", "");
+    } else {
+      // ポップアップ禁止 → allowpopups は付けない
+      // （Electron の仕様上、属性が無い＝ポップアップ不可）
+    }
+  } catch (e) {
+    console.error("apply allowpopups failed", e);
+  }
 
   wv.src = tab.url || "https://www.google.com";
 

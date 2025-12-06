@@ -178,6 +178,11 @@
     scrollToBottom();
   }
 
+  // 他ファイルからチャット欄にメッセージを追加するためのフック
+  window.mindraAppendAiMessage = function (role, text) {
+    appendMessage(role, text);
+  };
+
   function scrollToBottom() {
     chatContainer.scrollTop = chatContainer.scrollHeight;
   }

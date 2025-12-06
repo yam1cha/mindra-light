@@ -3817,7 +3817,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // window がキーを受け取ったが webview がフォーカスされてない時 → 転送
-/*
 window.addEventListener('keydown', (e) => {
   const activeWV =
     document.querySelector('webview.active') ||
@@ -3839,4 +3838,3 @@ window.addEventListener('keydown', (e) => {
     });
   } catch (_) {}
 });
-*/

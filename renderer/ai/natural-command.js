@@ -31,21 +31,29 @@
     // プレフィックスコマンド
     // -------------------------
 
+    // search:xxxxx → Web検索系
     if (/^search:/i.test(trimmed)) {
       const q = trimmed.replace(/^search:/i, "").trim();
       return { type: "web", raw, text: q };
     }
 
+    // say:xxxxx → Web送信系
     if (/^say:/i.test(trimmed)) {
       const msg = trimmed.replace(/^say:/i, "").trim();
       return { type: "web", raw, text: msg };
+    }
+
+    // ★ X:xxxxx → X 自動操作系
+    if (/^x:/i.test(trimmed)) {
+      const body = trimmed.replace(/^x:/i, "").trim();
+      return { type: "x", raw, text: body };
     }
 
     // -------------------------
     // 日本語自然文コマンド
     // -------------------------
 
-    // 要約
+    // 要約系
     if (
       n === "要約" ||
       n === "要約して" ||
@@ -58,7 +66,7 @@
       return { type: "summarize", raw };
     }
 
-    // say 系
+    // 「〜って送って」＝ Web送信
     if (
       n.endsWith("って送って") ||
       n.endsWith("って送信して") ||
@@ -73,12 +81,14 @@
       };
     }
 
-    // search 系
+    // 「〜を検索して」「〜を調べて」＝ Web検索
     if (
       n.includes("検索して") ||
       n.includes("を検索") ||
       /.+を検索$/.test(n) ||
-      /.+検索して$/.test(n)
+      /.+検索して$/.test(n) ||
+      n.includes("調べて") ||
+      n.includes("調査して")
     ) {
       return {
         type: "web",

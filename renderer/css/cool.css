@@ -242,6 +242,14 @@ html[data-theme="cool"] .tab-item.active {
     0 0 6px rgba(0, 200, 255, 0.35);
 }
 
+html[data-theme="cool"] .tab-item-title {
+  color: #e7f6ff;
+}
+
+html[data-theme="cool"] .tab-item-url {
+  color: rgba(123, 208, 255, 0.85);
+}
+
 html[data-theme="cool"] .tab-profile-dot {
   background: #18ff8b;
   border-color: rgba(0, 0, 0, 0.6);

@@ -352,6 +352,14 @@ html[data-theme="aurora"] .tab-item.active {
     0 0 22px rgba(123, 240, 255, 0.7);
 }
 
+html[data-theme="aurora"] .tab-item-title {
+  color: var(--fg-main);
+}
+
+html[data-theme="aurora"] .tab-item-url {
+  color: var(--fg-muted);
+}
+
 html[data-theme="aurora"] .tab-profile-dot {
   background: var(--c3);
   border-color: rgba(3, 6, 10, 0.95);

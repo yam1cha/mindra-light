@@ -288,7 +288,7 @@ body {
 
 .tab-item {
   width: 100%;
-  padding: 4px 6px;
+  padding: 6px 8px;
   border-radius: 6px;
   background: transparent;
   color: #333;
@@ -321,15 +321,36 @@ body {
 .tab-item-left {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
+  flex: 1;
 }
 
 .tab-item-title {
+  display: block;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  max-width: 150px;
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.tab-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tab-item-url {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  color: #5f6673;
+  line-height: 1.25;
 }
 
 .tab-close-btn {

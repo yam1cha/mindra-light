@@ -2611,12 +2611,22 @@ function renderTabs() {
       tab.profileId && profileColors[tab.profileId] ? tab.profileId : 1;
     dot.style.backgroundColor = profileColors[pid];
 
+    const textBox = document.createElement("div");
+    textBox.className = "tab-item-text";
+
     const titleSpan = document.createElement("span");
     titleSpan.className = "tab-item-title";
     titleSpan.textContent = tab.title;
 
+    const urlSpan = document.createElement("span");
+    urlSpan.className = "tab-item-url";
+    urlSpan.textContent = tab.url || "";
+
+    textBox.appendChild(titleSpan);
+    textBox.appendChild(urlSpan);
+
     left.appendChild(dot);
-    left.appendChild(titleSpan);
+    left.appendChild(textBox);
 
     const rightBox = document.createElement("div");
     rightBox.style.display = "flex";

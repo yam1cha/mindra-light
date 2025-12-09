@@ -211,6 +211,19 @@ html[data-theme="zenith"] .tab-item.active {
     0 0 6px rgba(184, 154, 96, 0.35);
 }
 
+html[data-theme="zenith"] .tab-item-title {
+  color: var(--tab-fg);
+}
+
+html[data-theme="zenith"] .tab-item-url {
+  color: #b5b5b5;
+}
+
+html[data-theme="zenith"] .tab-item.active .tab-item-title,
+html[data-theme="zenith"] .tab-item.active .tab-item-url {
+  color: var(--accent-light);
+}
+
 html[data-theme="zenith"] .tab-profile-dot {
   background: var(--accent);
   border-color: rgba(0, 0, 0, 0.6);

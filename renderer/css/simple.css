@@ -199,6 +199,14 @@ html[data-theme="simple"] .tab-item.active {
     0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
+html[data-theme="simple"] .tab-item-title {
+  color: #1f2937;
+}
+
+html[data-theme="simple"] .tab-item-url {
+  color: #6b7280;
+}
+
 html[data-theme="simple"] .tab-profile-dot {
   background: var(--accent);
   border-color: #ffffff;

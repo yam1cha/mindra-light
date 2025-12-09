@@ -225,6 +225,19 @@ html[data-theme="emerald"] .tab-item.active {
     0 0 16px rgba(33, 135, 103, 0.9);
 }
 
+html[data-theme="emerald"] .tab-item-title {
+  color: var(--mc-text-main);
+}
+
+html[data-theme="emerald"] .tab-item-url {
+  color: #7bc9b3;
+}
+
+html[data-theme="emerald"] .tab-item.active .tab-item-title,
+html[data-theme="emerald"] .tab-item.active .tab-item-url {
+  color: #ffffff;
+}
+
 html[data-theme="emerald"] .tab-profile-dot {
   background: #3bffd0;
   border-color: rgba(0, 0, 0, 0.7);

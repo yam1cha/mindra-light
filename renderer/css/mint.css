@@ -222,6 +222,14 @@ html[data-theme="mint"] .tab-item.active {
     0 8px 14px rgba(0, 0, 0, 0.06);
 }
 
+html[data-theme="mint"] .tab-item-title {
+  color: var(--cl-text-main);
+}
+
+html[data-theme="mint"] .tab-item-url {
+  color: #5b7c72;
+}
+
 html[data-theme="mint"] .tab-profile-dot {
   background: var(--cl-accent);
   border-color: rgba(255, 255, 255, 0.9);

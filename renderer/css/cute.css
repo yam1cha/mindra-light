@@ -196,6 +196,19 @@ html[data-theme="cute"] .tab-item.active {
   box-shadow: 0 0 10px rgba(255, 150, 220, 0.45);
 }
 
+html[data-theme="cute"] .tab-item-title {
+  color: #4c3058;
+}
+
+html[data-theme="cute"] .tab-item-url {
+  color: #8f6d99;
+}
+
+html[data-theme="cute"] .tab-item.active .tab-item-title,
+html[data-theme="cute"] .tab-item.active .tab-item-url {
+  color: #ffffff;
+}
+
 /* ブックマークの行にマウスが乗った時の色 */
 .bookmark-tree-row:hover {
   background: rgba(0, 0, 0, 0.45);

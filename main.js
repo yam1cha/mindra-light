@@ -172,19 +172,6 @@ function writeProfilesMeta(meta) {
   }
 }
 
-function writeProfilesMeta(meta) {
-  try {
-    fsSync.mkdirSync(path.dirname(profilesMetaPath), { recursive: true });
-    fsSync.writeFileSync(
-      profilesMetaPath,
-      JSON.stringify(meta, null, 2),
-      "utf8"
-    );
-  } catch (e) {
-    console.error("[profile] write meta error:", e);
-  }
-}
-
 // ===== YouTube 専用ネットワークブロック =====
 
 // YouTube / googlevideo 系かどうか
@@ -250,26 +237,6 @@ function isYouTubeAdUrl(url, hostname) {
   }
 
   return false;
-}
-
-// YouTube 広告用動画ストリームかどうか判定
-function isYouTubeAdVideo(url) {
-  const u = url.toLowerCase();
-
-  // googlevideo の videoplayback 以外はそもそも対象外
-  if (!u.includes("googlevideo.com/videoplayback")) return false;
-
-  // 広告っぽいパラメータだけを見る（本編を巻き込みにくいようにかなり絞ってる）
-  const adParams = [
-    "ctier=l", // 広告レイヤー
-    "oad", // overlay ad
-    "oads", // old tag
-    "adformat", // 広告フォーマット指定
-    "source=yt_otf", // OTF 広告ストリーム
-    "label=ad", // ad ラベル付きストリーム
-  ];
-
-  return adParams.some((p) => u.includes(p));
 }
 
 // HTTPS でテキストをダウンロードして保存する

@@ -3837,6 +3837,19 @@ document.addEventListener('DOMContentLoaded', () => {
   webviews.forEach(wv => {
     wv.addEventListener('blur', () => {
       setTimeout(() => {
+        const activeEl = document.activeElement;
+        const tag = activeEl && activeEl.tagName;
+        const interactiveTags = ["INPUT", "TEXTAREA", "BUTTON", "SELECT", "OPTION"];
+
+        // 右サイドバーの入力欄など、ユーザーが意図的にフォーカスした要素があれば奪わない
+        if (
+          activeEl &&
+          activeEl !== wv &&
+          (interactiveTags.includes(tag) || activeEl.isContentEditable)
+        ) {
+          return;
+        }
+
         try { wv.focus(); } catch (e) {}
       }, 0);
     });

@@ -536,9 +536,9 @@ ${content}
               articleEl.querySelector('div[aria-label="いいね"]') ||
               articleEl.querySelector('div[aria-label="Like"]');
 
-            if (likeBtn) {
-              likeBtn.click();
-            }
+            //if (likeBtn) {
+            //  likeBtn.click();
+            //}
 
             // 5. 通常
             return { kind: "normal", liked: !!liked };
@@ -712,6 +712,49 @@ ${content}
             return dt + ":" + txt.slice(0, 80);
           }
 
+
+          function isReplyDetailTweet(articleEl) {
+            if (!articleEl) return false;
+
+            const textEl = articleEl.querySelector('[data-testid="tweetText"]');
+            const rawText = textEl && typeof textEl.innerText === "string"
+              ? textEl.innerText
+              : "";
+            const text = rawText || "";
+            const firstLine = (text || "").split("\\n", 1)[0].trim();
+
+            let ctxTexts = [];
+            ctxTexts.push(articleEl.innerText || "");
+            let p = articleEl.parentElement;
+            for (let i = 0; i < 2 && p; i++) {
+              ctxTexts.push(p.innerText || "");
+              p = p.parentElement;
+            }
+            const ctx = (Array.isArray(ctxTexts) ? ctxTexts : [])
+              .join("\\n")
+              .toLowerCase();
+
+            const hasReplyLabel =
+              ctx.includes("返信先") ||
+              ctx.includes("への返信") ||
+              ctx.includes("返信をさらに表示") ||
+              ctx.includes("返信を表示") ||
+              ctx.includes("replying to") ||
+              ctx.includes("in reply to") ||
+              ctx.includes("replied to") ||
+              ctx.includes("replied");
+
+            const startsWithHandle =
+              firstLine.startsWith("@") ||
+              firstLine.startsWith("＠");
+
+            const replyLink = articleEl.querySelector(
+              'a[aria-label*="返信"], a[aria-label*="reply"], a[aria-label*="Reply"]'
+            );
+
+            return hasReplyLabel || startsWithHandle || !!replyLink;
+          }
+
           // 対象ツイートを探す
           const list = Array.from(document.querySelectorAll('article[data-testid="tweet"]'));
           const target = list.find((a) => getTweetKey(a) === "${safeKey}");
@@ -746,9 +789,55 @@ ${content}
             openWaited += openStep;
           }
 
+
+          // 詳細ポストの article を取得
+          await wait(2000);
+          const detailArticle = document.querySelector('article[data-testid="tweet"]');
+          if (!detailArticle) {
+            return { ok:false, reason:"no-detail-article" };
+          }
+
+          // ★ ここでリプかどうか判定
+          const isReply = isReplyDetailTweet(detailArticle);
+          if (isReply) {
+            // リプならいいねしないで終了
+          }else{
+            // いいねボタンがあれば押す（既にいいね済みは data-testid="unlike" などで判定してもOK）
+            const alreadyLiked =
+              detailArticle.querySelector('[data-testid="unlike"]') ||
+              detailArticle.querySelector('[aria-label*="いいねを取り消す"]') ||
+              detailArticle.querySelector('[aria-label*="Undo like"]');
+
+            if (!alreadyLiked) {
+              const likeBtn =
+                detailArticle.querySelector('[data-testid="like"]') ||
+                detailArticle.querySelector('div[aria-label="いいね"]') ||
+                detailArticle.querySelector('div[aria-label="Like"]');
+              if (likeBtn) {
+                try { likeBtn.click(); } catch (e) {}
+                await wait(800);
+              }
+            }
+          }
+
+          await wait(2000);
+
+          // タイムラインに戻る
+          try {
+            if (location.pathname.includes("/status/")) {
+              window.history.back();
+            }
+          } catch (e) {}
+          await wait(1500);
+
+          return { ok:true };
+
+
           // 軽く待ってから返信欄を探す
           await wait(5000);
 
+
+          
           function findReplyBox() {
             // data-testid="tweetTextarea_*" 直下の contenteditable を優先
             const wrappers = Array.from(
@@ -1026,9 +1115,9 @@ ${content}
               // 文字列の中に "false" があったら絶対開かない
               //if (!hasFalse && hasMorning) {
               //  opened++;
-              //  await evalInActiveTab(
-              //    await buildXOpenTweetByKeyScript(t.key, 'おはよー！')
-              //  );
+                await evalInActiveTab(
+                  await buildXOpenTweetByKeyScript(t.key, norm)
+                );
               //}
 
               await waitMs(3000);

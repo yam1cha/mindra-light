@@ -61,7 +61,6 @@
               </p>
             </div>
 
-            <!-- プロファイル関係は一旦コメントアウト
             <div class="settings-group">
               <label class="settings-label">プロファイル一覧</label>
               <div class="settings-row">
@@ -80,14 +79,13 @@
               <label class="settings-label">プロファイル</label>
               <div class="settings-row">
                 <button id="setting-add-profile-shortcut" class="settings-button">
-                  プロファイルの追加(現在はバグがあるため使用しないで)
+                  プロファイルの追加
                 </button>
               </div>
               <p class="settings-help">
                 デスクトップに新しいプロファイル用ショートカットを作るよ。
               </p>
             </div>
-            -->
 
             <!-- 障害ログフォルダを開く -->
             <div class="settings-group">

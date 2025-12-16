@@ -30,6 +30,7 @@ logger.initLogger(app);
 logger.removeOldLogs(logger.getLogsDir(), 90);
 
 let mainWindow = null;
+const profileWindows = new Map();
 
 // 一般設定フラグ（renderer から IPC で更新）
 let generalSettingsFlags = {
@@ -610,14 +611,44 @@ function saveWindowState(win, profileId) {
 function extractProfileIdFromArgv(argv) {
   try {
     const list = Array.isArray(argv) ? argv : process.argv;
-    for (const arg of list) {
+
+    const normalizeProfile = (raw) => {
+      const v = typeof raw === "string" ? raw.trim() : "";
+      if (!v) return null;
+      if (/^profile-\d+$/.test(v)) return v;
+      if (/^\d+$/.test(v)) return `profile-${v}`; // 2 -> profile-2
+      return null;
+    };
+
+    // 環境変数で指定された場合を優先
+    const envProfile =
+      normalizeProfile(process.env.MINDRA_PROFILE || process.env.MINDRA_PROFILE_ID);
+    if (envProfile) return envProfile;
+
+    for (let i = 0; i < list.length; i++) {
+      const arg = list[i];
       if (typeof arg !== "string") continue;
-      if (arg.startsWith("--mindra-profile=")) {
-        const v = arg.substring("--mindra-profile=".length).trim();
-        if (v && /^profile-\d+$/.test(v)) {
-          return v;
-        }
+
+      // --mindra-profile=profile-2 / --profile=2
+      let fromArg =
+        arg.startsWith("--mindra-profile=")
+          ? normalizeProfile(arg.substring("--mindra-profile=".length))
+          : arg.startsWith("--profile=")
+            ? normalizeProfile(arg.substring("--profile=".length))
+            : null;
+
+      // --mindra-profile profile-2 / --profile 2
+      if (!fromArg && (arg === "--mindra-profile" || arg === "--profile")) {
+        fromArg = normalizeProfile(list[i + 1]);
       }
+
+      // --profile-2 / profile-2 / 2
+      if (!fromArg) {
+        const trimmed = arg.startsWith("--") ? arg.substring(2) : arg;
+        fromArg = normalizeProfile(trimmed || arg);
+      }
+
+      if (fromArg) return fromArg;
     }
   } catch (e) {
     console.warn("[profile] extractProfileIdFromArgv error:", e);
@@ -892,6 +923,13 @@ async function createWindow(profileIdArg) {
     extractProfileIdFromArgv(process.argv) ||
     "profile-1";
 
+  const existing = profileWindows.get(profileId);
+  if (existing && !existing.isDestroyed()) {
+    if (existing.isMinimized()) existing.restore();
+    existing.focus();
+    return existing;
+  }
+
   const winState = await loadWindowState(profileId);  // ここでプロファイル渡す
 
   let x, y;
@@ -953,6 +991,11 @@ async function createWindow(profileIdArg) {
   }
 
   win.loadFile("index.html");
+
+  win.on("closed", () => {
+    profileWindows.delete(profileId);
+    if (mainWindow === win) mainWindow = null;
+  });
 
   win.webContents.on("did-navigate", (_event, url) => {
     try {
@@ -1240,28 +1283,17 @@ ipcMain.handle("profile:create-shortcut", async () => {
 
     const desktopDir = app.getPath("desktop");
     const appPath = process.execPath;
-    const appDir = path.dirname(appPath);
 
     let shortcutPath = "";
 
     if (process.platform === "win32") {
-      // Windows: .lnk ショートカット
-      const shortcutName = `MindraLight-${profileId}.lnk`;
+      // Windows: .cmd テキストショートカット（メモ帳で開ける）
+      const shortcutName = `MindraLight-${profileId}.cmd`;
       shortcutPath = path.join(desktopDir, shortcutName);
 
-      const args = [`--mindra-profile=${profileId}`];
+      const script = `@echo off\r\n"${appPath}" --mindra-profile=${profileId}\r\n`;
 
-      const { shell } = require("electron");
-      const ok = shell.writeShortcutLink(shortcutPath, {
-        target: appPath,
-        args: args.join(" "),
-        description: `MindraLight (${profileId})`,
-        workingDirectory: appDir,
-      });
-
-      if (!ok) {
-        throw new Error("writeShortcutLink failed");
-      }
+      await fs.writeFile(shortcutPath, script, "utf8");
     } else {
       // Mac / Linux: 起動用スクリプト
       const isMac = process.platform === "darwin";

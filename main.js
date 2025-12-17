@@ -1022,13 +1022,13 @@ async function createWindow(profileIdArg) {
    },
   });
 
+  const saveBounds = () => saveWindowState(win, profileId); // プロファイル渡す
+  win.on("resize", saveBounds);
+  win.on("move", saveBounds);
+  win.on("close", saveBounds);
+
   if (!mainWindow) {
     mainWindow = win;
-
-    const saveBounds = () => saveWindowState(win, profileId); // プロファイル渡す
-    win.on("resize", saveBounds);
-    win.on("move", saveBounds);
-    win.on("close", saveBounds);
   }
 
   // Mac スワイプナビゲーションをこのウィンドウに付ける

@@ -1325,8 +1325,18 @@ ipcMain.on("settings:update-general", (_event, flags) => {
 ipcMain.handle("profile:create-shortcut", async () => {
   try {
     const meta = readProfilesMeta();
-    const lastId = typeof meta.lastId === "number" ? meta.lastId : 1;
-    const nextId = lastId + 1;
+    const profiles = Array.isArray(meta.profiles) ? meta.profiles : [];
+    const maxExistingId = Math.max(
+      1,
+      ...profiles
+        .map((p) => {
+          const m = typeof p.id === "string" && p.id.match(/^profile-(\d+)$/);
+          return m ? Number(m[1]) : null;
+        })
+        .filter((n) => typeof n === "number" && Number.isFinite(n))
+    );
+
+    const nextId = maxExistingId + 1;
     const profileId = `profile-${nextId}`;
 
     const desktopDir = app.getPath("desktop");

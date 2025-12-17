@@ -1438,6 +1438,7 @@ const downloadPanel = document.getElementById("download-panel");
 const downloadListEl = document.getElementById("download-list");
 const downloadPanelClose = document.getElementById("download-panel-close");
 let downloadItems = [];
+let isDownloadPanelHidden = false;
 
 const DOWNLOAD_RING_LENGTH = 56;
 
@@ -1451,9 +1452,20 @@ function formatBytes(bytes) {
   return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
 }
 
-function ensureDownloadPanelVisibility(visible) {
+function ensureDownloadPanelVisibility(visible, options = {}) {
   if (!downloadPanel) return;
-  downloadPanel.style.display = visible ? "block" : "none";
+  const { manual = false, force = false } = options;
+
+  if (visible) {
+    if (!force && isDownloadPanelHidden) return;
+    isDownloadPanelHidden = false;
+    downloadPanel.style.display = "block";
+  } else {
+    downloadPanel.style.display = "none";
+    if (manual) {
+      isDownloadPanelHidden = true;
+    }
+  }
 }
 
 function renderDownloadItems() {
@@ -1619,7 +1631,7 @@ window.mindraDownloadStatus = {
 
 if (downloadPanelClose) {
   downloadPanelClose.addEventListener("click", () => {
-    ensureDownloadPanelVisibility(false);
+    ensureDownloadPanelVisibility(false, { manual: true });
   });
 }
 
@@ -1666,6 +1678,16 @@ if (window.mindraDownloadEvents && window.mindraDownloadStatus) {
 // ダウンロード完了状態でクリックしたらダウンロードフォルダを開く
 if (downloadStatusBtn) {
   downloadStatusBtn.addEventListener("click", async () => {
+    if (
+      downloadPanel &&
+      downloadPanel.style.display === "none" &&
+      downloadItems &&
+      downloadItems.length > 0
+    ) {
+      ensureDownloadPanelVisibility(true, { force: true });
+      return;
+    }
+
     // 「完了」状態でなければ何もしない（ぐるぐる中や未使用時は無反応）
     if (!downloadStatusBtn.classList.contains("is-complete")) {
       return;

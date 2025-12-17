@@ -36,6 +36,9 @@ logger.removeOldLogs(logger.getLogsDir(), 90);
 let mainWindow = null;
 const profileWindows = new Map();
 
+const activeDownloadItems = new Map();
+let lastDownloadedSavePath = "";
+
 // 一般設定フラグ（renderer から IPC で更新）
 let generalSettingsFlags = {
   enableAdblock: true, // 広告ブロック有効
@@ -932,6 +935,8 @@ function attachDownloadEventsToSession(ses) {
       const totalBytes = item.getTotalBytes();
       const url = item.getURL();
 
+      activeDownloadItems.set(downloadId, item);
+
       // ダウンロード開始
       sendTo.send("mindra-download-started", {
         id: downloadId,
@@ -963,6 +968,13 @@ function attachDownloadEventsToSession(ses) {
           fileName: item.getFilename(),
           savePath: item.getSavePath(),
         });
+
+        const savePath = item.getSavePath();
+        if (savePath) {
+          lastDownloadedSavePath = savePath;
+        }
+
+        activeDownloadItems.delete(downloadId);
       });
     } catch (e) {
       console.error("[download] will-download handler error:", e);
@@ -1302,22 +1314,62 @@ ipcMain.handle("logs:open-folder", async () => {
   }
 });
 
-ipcMain.handle("downloads:open-folder", async () => {
+ipcMain.handle("downloads:open-folder", async (_event, targetPath) => {
   try {
-    const dir = app.getPath("downloads");
-    if (!dir) {
-      return { ok: false, error: "ダウンロードフォルダが取得できません" };
+    const candidates = [];
+    if (typeof targetPath === "string" && targetPath.trim()) {
+      candidates.push(targetPath);
+    }
+    if (lastDownloadedSavePath) {
+      candidates.push(lastDownloadedSavePath);
     }
 
-    const result = await shell.openPath(dir);
-    if (result) {
-      logger.logError("downloads:open-folder failed", { error: result });
-      return { ok: false, error: result };
+    const downloadsDir = app.getPath("downloads");
+    if (downloadsDir) {
+      candidates.push(downloadsDir);
     }
 
-    return { ok: true };
+    for (const p of candidates) {
+      if (!p) continue;
+      try {
+        const stat = fsSync.statSync(p);
+        if (stat.isDirectory()) {
+          const result = await shell.openPath(p);
+          if (!result) return { ok: true };
+        } else {
+          shell.showItemInFolder(p);
+          return { ok: true };
+        }
+      } catch (e) {
+        // ignore and try next path
+      }
+    }
+
+    logger.logError("downloads:open-folder failed", { error: "対象パスが見つかりません" });
+    return { ok: false, error: "対象のパスが見つかりません" };
   } catch (e) {
     logger.logError("downloads:open-folder exception", {
+      error: e && e.message ? e.message : String(e),
+    });
+    return { ok: false, error: e && e.message ? e.message : String(e) };
+  }
+});
+
+ipcMain.handle("downloads:cancel", async (_event, downloadId) => {
+  if (!downloadId) {
+    return { ok: false, error: "downloadId is required" };
+  }
+
+  const item = activeDownloadItems.get(downloadId);
+  if (!item) {
+    return { ok: false, error: "対象のダウンロードが見つかりません" };
+  }
+
+  try {
+    item.cancel();
+    return { ok: true };
+  } catch (e) {
+    logger.logError("downloads:cancel exception", {
       error: e && e.message ? e.message : String(e),
     });
     return { ok: false, error: e && e.message ? e.message : String(e) };

@@ -345,12 +345,30 @@ contextBridge.exposeInMainWorld("mindraDownloads", {
    * ダウンロードフォルダを開く。
    * @returns {Promise<{ok: boolean, error?: string}>}
    */
-  async openFolder() {
+  async openFolder(savePath) {
     try {
-      const res = await ipcRenderer.invoke("downloads:open-folder");
+      const res = await ipcRenderer.invoke("downloads:open-folder", savePath);
       return res || { ok: false, error: "unknown error" };
     } catch (e) {
       console.error("[preload] mindraDownloads.openFolder error:", e);
+      return {
+        ok: false,
+        error: e && e.message ? e.message : String(e),
+      };
+    }
+  },
+
+  /**
+   * 進行中のダウンロードを中断する。
+   * @param {string} downloadId 対象ダウンロードの ID。
+   * @returns {Promise<{ok: boolean, error?: string}>}
+   */
+  async cancel(downloadId) {
+    try {
+      const res = await ipcRenderer.invoke("downloads:cancel", downloadId);
+      return res || { ok: false, error: "unknown error" };
+    } catch (e) {
+      console.error("[preload] mindraDownloads.cancel error:", e);
       return {
         ok: false,
         error: e && e.message ? e.message : String(e),

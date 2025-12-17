@@ -1530,7 +1530,7 @@ function renderDownloadItems() {
     openBtn.onclick = async () => {
       if (!window.mindraDownloads || typeof window.mindraDownloads.openFolder !== "function") return;
       try {
-        const res = await window.mindraDownloads.openFolder();
+        const res = await window.mindraDownloads.openFolder(item && item.savePath);
         if (!res || !res.ok) {
           console.error("open downloads folder failed", res && res.error);
         }
@@ -1541,10 +1541,20 @@ function renderDownloadItems() {
     actions.appendChild(openBtn);
 
     const dismissBtn = document.createElement("button");
-    dismissBtn.textContent = "非表示";
-    dismissBtn.onclick = () => {
-      downloadItems = downloadItems.filter((d) => d.id !== item.id);
-      renderDownloadItems();
+    dismissBtn.textContent = "中断";
+    dismissBtn.disabled = item.state !== "progressing";
+    dismissBtn.onclick = async () => {
+      if (!window.mindraDownloads || typeof window.mindraDownloads.cancel !== "function") {
+        return;
+      }
+      try {
+        const res = await window.mindraDownloads.cancel(item.id);
+        if (!res || !res.ok) {
+          console.error("cancel download failed", res && res.error);
+        }
+      } catch (e) {
+        console.error("cancel download error", e);
+      }
     };
     actions.appendChild(dismissBtn);
 
@@ -1577,6 +1587,7 @@ function upsertDownloadItem(payload) {
         : typeof existing.received === "number"
           ? existing.received
           : 0,
+    savePath: (payload && payload.savePath) || existing.savePath || "",
     state: (payload && payload.state) || existing.state || "progressing",
   };
 

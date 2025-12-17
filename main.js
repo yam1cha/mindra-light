@@ -39,6 +39,44 @@ const profileWindows = new Map();
 const activeDownloadItems = new Map();
 let lastDownloadedSavePath = "";
 
+function getDownloadBaseDir() {
+  const downloadsDir = app.getPath("downloads");
+  if (downloadsDir) {
+    try {
+      fsSync.mkdirSync(downloadsDir, { recursive: true });
+      return downloadsDir;
+    } catch (e) {
+      console.error("[download] failed to prepare downloads dir:", e);
+    }
+  }
+
+  const fallback = path.join(app.getPath("userData"), "downloads");
+  try {
+    fsSync.mkdirSync(fallback, { recursive: true });
+  } catch (e) {
+    console.error("[download] failed to prepare fallback downloads dir:", e);
+  }
+  return fallback;
+}
+
+function buildUniqueSavePath(fileName) {
+  const baseDir = getDownloadBaseDir();
+  const ext = path.extname(fileName);
+  const name = path.basename(fileName, ext);
+
+  let counter = 0;
+  let candidate = path.join(baseDir, fileName);
+
+  while (fsSync.existsSync(candidate)) {
+    counter += 1;
+    const suffix = `(${counter})`;
+    const nextName = ext ? `${name}${suffix}${ext}` : `${name}${suffix}`;
+    candidate = path.join(baseDir, nextName);
+  }
+
+  return candidate;
+}
+
 // 一般設定フラグ（renderer から IPC で更新）
 let generalSettingsFlags = {
   enableAdblock: true, // 広告ブロック有効
@@ -934,6 +972,14 @@ function attachDownloadEventsToSession(ses) {
       const fileName = item.getFilename();
       const totalBytes = item.getTotalBytes();
       const url = item.getURL();
+
+      try {
+        const savePath = buildUniqueSavePath(fileName);
+        item.setSavePath(savePath);
+        lastDownloadedSavePath = savePath;
+      } catch (e) {
+        console.error("[download] failed to set save path:", e);
+      }
 
       activeDownloadItems.set(downloadId, item);
 

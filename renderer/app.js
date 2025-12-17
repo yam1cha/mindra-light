@@ -1672,7 +1672,7 @@ function serializeTabsState() {
       return {
         uid: t.uid,
         url: t.url,
-        profileId: t.profileId || 1,
+        profileId: t.profileId || DEFAULT_PROFILE_NO,
         // タブごとの履歴も保存
         historyEntries: Array.isArray(t.historyEntries)
           ? t.historyEntries
@@ -1768,7 +1768,7 @@ function loadTabsState() {
         uid,
         url,
         title,
-        profileId: t.profileId || 1,
+        profileId: t.profileId || DEFAULT_PROFILE_NO,
         webviewId: null,
         historyEntries,
         historyIndex,
@@ -3041,7 +3041,7 @@ function createTab(url = "https://www.google.com", activate = true) {
     uid,
     url,
     title,
-    profileId: 1,
+    profileId: DEFAULT_PROFILE_NO,
     webviewId: null,
     historyEntries: [],
     historyIndex: -1,
@@ -3113,7 +3113,7 @@ function restoreClosedTab() {
     uid,
     url,
     title,
-    profileId: last.profileId || 1,
+    profileId: last.profileId || DEFAULT_PROFILE_NO,
     webviewId: null,
     historyEntries: [],
     historyIndex: -1,

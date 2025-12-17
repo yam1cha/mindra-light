@@ -925,8 +925,20 @@ function attachDownloadEventsToSession(ses) {
       if (!targetWin || targetWin.isDestroyed()) return;
       const sendTo = targetWin.webContents;
 
+      const downloadId = `${Date.now()}-${Math.random()
+        .toString(16)
+        .slice(2)}`;
+      const fileName = item.getFilename();
+      const totalBytes = item.getTotalBytes();
+      const url = item.getURL();
+
       // ダウンロード開始
-      sendTo.send("mindra-download-started", {});
+      sendTo.send("mindra-download-started", {
+        id: downloadId,
+        fileName,
+        total: totalBytes,
+        url,
+      });
 
       // 進捗
       item.on("updated", (_e, state) => {
@@ -934,6 +946,9 @@ function attachDownloadEventsToSession(ses) {
         const total = item.getTotalBytes();
 
         sendTo.send("mindra-download-updated", {
+          id: downloadId,
+          fileName: item.getFilename(),
+          url: item.getURL(),
           state,
           received,
           total,
@@ -942,7 +957,12 @@ function attachDownloadEventsToSession(ses) {
 
       // 完了／中断
       item.on("done", (_e, state) => {
-        sendTo.send("mindra-download-done", { state });
+        sendTo.send("mindra-download-done", {
+          id: downloadId,
+          state,
+          fileName: item.getFilename(),
+          savePath: item.getSavePath(),
+        });
       });
     } catch (e) {
       console.error("[download] will-download handler error:", e);

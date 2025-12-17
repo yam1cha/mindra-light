@@ -1434,7 +1434,148 @@ const downloadProgressRing =
   downloadStatusBtn &&
   downloadStatusBtn.querySelector(".dl-progress-ring");
 
+const downloadPanel = document.getElementById("download-panel");
+const downloadListEl = document.getElementById("download-list");
+const downloadPanelClose = document.getElementById("download-panel-close");
+let downloadItems = [];
+
 const DOWNLOAD_RING_LENGTH = 56;
+
+function formatBytes(bytes) {
+  if (bytes === 0) return "0 B";
+  if (!bytes || Number.isNaN(bytes) || bytes < 0) return "―";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024)
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
+}
+
+function ensureDownloadPanelVisibility(visible) {
+  if (!downloadPanel) return;
+  downloadPanel.style.display = visible ? "block" : "none";
+}
+
+function renderDownloadItems() {
+  if (!downloadListEl) return;
+
+  downloadListEl.innerHTML = "";
+
+  if (!downloadItems || downloadItems.length === 0) {
+    ensureDownloadPanelVisibility(false);
+    return;
+  }
+
+  downloadItems.forEach((item) => {
+    const row = document.createElement("div");
+    row.className = "download-item";
+
+    const header = document.createElement("div");
+    header.className = "download-item-header";
+    header.textContent = item.fileName || "ダウンロード中";
+    row.appendChild(header);
+
+    const status = document.createElement("div");
+    status.className = "download-item-status";
+    const statusLabel = document.createElement("span");
+    statusLabel.textContent = (() => {
+      if (item.state === "completed") return "完了";
+      if (item.state === "cancelled") return "キャンセル";
+      if (item.state === "interrupted") return "中断";
+      return "ダウンロード中";
+    })();
+
+    const percent = (() => {
+      if (item.state === "completed") return 100;
+      const total = item.total || 0;
+      if (total <= 0) return 0;
+      return Math.min(100, Math.round(((item.received || 0) / total) * 100));
+    })();
+
+    const progressText = document.createElement("span");
+    progressText.textContent = `${formatBytes(item.received || 0)} / ${formatBytes(
+      item.total || 0,
+    )}`;
+
+    status.appendChild(statusLabel);
+    status.appendChild(progressText);
+    row.appendChild(status);
+
+    const bar = document.createElement("div");
+    bar.className = "download-progress-bar";
+    const inner = document.createElement("div");
+    inner.className = "download-progress-inner";
+    inner.style.width = `${percent}%`;
+    bar.appendChild(inner);
+    row.appendChild(bar);
+
+    const actions = document.createElement("div");
+    actions.className = "download-item-actions";
+
+    const openBtn = document.createElement("button");
+    openBtn.textContent = "フォルダを開く";
+    openBtn.disabled = item.state !== "completed";
+    openBtn.onclick = async () => {
+      if (!window.mindraDownloads || typeof window.mindraDownloads.openFolder !== "function") return;
+      try {
+        const res = await window.mindraDownloads.openFolder();
+        if (!res || !res.ok) {
+          console.error("open downloads folder failed", res && res.error);
+        }
+      } catch (e) {
+        console.error("open downloads folder error", e);
+      }
+    };
+    actions.appendChild(openBtn);
+
+    const dismissBtn = document.createElement("button");
+    dismissBtn.textContent = "非表示";
+    dismissBtn.onclick = () => {
+      downloadItems = downloadItems.filter((d) => d.id !== item.id);
+      renderDownloadItems();
+    };
+    actions.appendChild(dismissBtn);
+
+    row.appendChild(actions);
+
+    downloadListEl.appendChild(row);
+  });
+
+  ensureDownloadPanelVisibility(true);
+}
+
+function upsertDownloadItem(payload) {
+  const id = (payload && payload.id) || `dl-${Date.now()}`;
+  const existingIndex = downloadItems.findIndex((d) => d.id === id);
+  const existing = existingIndex >= 0 ? downloadItems[existingIndex] : {};
+
+  const updated = {
+    id,
+    fileName: (payload && payload.fileName) || existing.fileName || "ダウンロード",
+    url: (payload && payload.url) || existing.url,
+    total:
+      payload && typeof payload.total === "number"
+        ? payload.total
+        : typeof existing.total === "number"
+          ? existing.total
+          : 0,
+    received:
+      payload && typeof payload.received === "number"
+        ? payload.received
+        : typeof existing.received === "number"
+          ? existing.received
+          : 0,
+    state: (payload && payload.state) || existing.state || "progressing",
+  };
+
+  if (existingIndex >= 0) {
+    downloadItems[existingIndex] = updated;
+  } else {
+    downloadItems = [updated, ...downloadItems];
+  }
+
+  renderDownloadItems();
+}
 
 if (downloadProgressRing) {
   // 初期状態：リングは全部「隠れた」状態
@@ -1476,13 +1617,20 @@ window.mindraDownloadStatus = {
   },
 };
 
+if (downloadPanelClose) {
+  downloadPanelClose.addEventListener("click", () => {
+    ensureDownloadPanelVisibility(false);
+  });
+}
+
 // ===== ダウンロード進捗 IPC リスナー =====
 // preload.js で mindraDownloadEvents が expose されている前提
 if (window.mindraDownloadEvents && window.mindraDownloadStatus) {
   try {
     // 開始
-    window.mindraDownloadEvents.onStarted(() => {
+    window.mindraDownloadEvents.onStarted((payload) => {
       window.mindraDownloadStatus.start();
+      upsertDownloadItem({ ...payload, state: "progressing" });
     });
 
     // 進捗
@@ -1495,6 +1643,7 @@ if (window.mindraDownloadEvents && window.mindraDownloadStatus) {
         percent = (received / total) * 100;
       }
       window.mindraDownloadStatus.setProgress(percent);
+      upsertDownloadItem(payload);
     });
 
     // 完了・中断
@@ -1507,6 +1656,7 @@ if (window.mindraDownloadEvents && window.mindraDownloadStatus) {
         // "cancelled", "interrupted" など
         window.mindraDownloadStatus.reset();
       }
+      upsertDownloadItem(payload);
     });
   } catch (e) {
     console.error("setup mindraDownloadEvents failed", e);

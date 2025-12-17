@@ -2,7 +2,24 @@
 // MindraLight 設定の読み書き専用モジュール（Ollama専用版 + モデル履歴）
 
 (function () {
-  const SETTINGS_KEY = 'mindra_settings_v1';
+  const DEFAULT_PROFILE_ID = 'profile-1';
+
+  const saveKeyPrefix =
+    (window.config && typeof window.config.SAVE_KEY_PREFIX === 'string'
+      ? window.config.SAVE_KEY_PREFIX
+      : '') || '';
+
+  const profileIdFromConfig =
+    (window.config && typeof window.config.profileId === 'string'
+      ? window.config.profileId
+      : DEFAULT_PROFILE_ID) || DEFAULT_PROFILE_ID;
+
+  const profileId = /^profile-\d+$/.test(profileIdFromConfig)
+    ? profileIdFromConfig
+    : DEFAULT_PROFILE_ID;
+
+  const SETTINGS_KEY = `${saveKeyPrefix}mindra_settings_${profileId}_v1`;
+  const LEGACY_SETTINGS_KEY = `${saveKeyPrefix}mindra_settings_v1`;
 
   const defaultSettings = {
     general: {
@@ -92,7 +109,13 @@
    */
   function loadSettings() {
     try {
-      const raw = window.localStorage.getItem(SETTINGS_KEY);
+      let raw = window.localStorage.getItem(SETTINGS_KEY);
+
+      // 互換用：デフォルトプロファイルのみ旧キーを参照する
+      if (!raw && profileId === DEFAULT_PROFILE_ID) {
+        raw = window.localStorage.getItem(LEGACY_SETTINGS_KEY);
+      }
+
       if (!raw) {
         return normalizeSettings(structuredClone(defaultSettings));
       }
@@ -114,6 +137,11 @@
       const normalized = normalizeSettings(structuredClone(settings));
       const json = JSON.stringify(normalized);
       window.localStorage.setItem(SETTINGS_KEY, json);
+
+      // デフォルトプロファイルでは旧キーもクリアしておく
+      if (profileId === DEFAULT_PROFILE_ID) {
+        window.localStorage.removeItem(LEGACY_SETTINGS_KEY);
+      }
     } catch (e) {
       console.error('[SettingsStore] Failed to save settings', e);
     }
@@ -125,6 +153,11 @@
   function resetSettings() {
     try {
       window.localStorage.removeItem(SETTINGS_KEY);
+
+      // 旧キーも念のため削除（デフォルトプロファイルのみ）
+      if (profileId === DEFAULT_PROFILE_ID) {
+        window.localStorage.removeItem(LEGACY_SETTINGS_KEY);
+      }
     } catch (e) {
       console.error('[SettingsStore] Failed to reset settings', e);
     }

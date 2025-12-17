@@ -9,6 +9,10 @@ const AdBlockClient = require("adblock-rs");
 const { initAIBackend } = require("./main/ai-ollama.js");
 const { initHistory, addEntry, getRecent } = require("./main/history-store.js");
 const logger = require("./main/logger.js");
+const { execFile } = require("child_process");
+const { promisify } = require("util");
+
+const execFileAsync = promisify(execFile);
 
 // YouTube の広告をどこまで殺すか
 // true にすると広告ストリームもブロック（壊れることもある）
@@ -1331,13 +1335,37 @@ ipcMain.handle("profile:create-shortcut", async () => {
     let shortcutPath = "";
 
     if (process.platform === "win32") {
-      // Windows: .cmd テキストショートカット（メモ帳で開ける）
-      const shortcutName = `MindraLight-${profileId}.cmd`;
+      // Windows: アイコン付きショートカット (.lnk)。失敗時は従来の .cmd を使用。
+      const shortcutName = `MindraLight-${profileId}.lnk`;
       shortcutPath = path.join(desktopDir, shortcutName);
 
-      const script = `@echo off\r\n"${appPath}" --mindra-profile=${profileId}\r\n`;
+      const escapeForPwsh = (p) => p.replace(/'/g, "''");
+      const psScript = [
+        `$s = (New-Object -COM WScript.Shell).CreateShortcut('${escapeForPwsh(shortcutPath)}')`,
+        `$s.TargetPath = '${escapeForPwsh(appPath)}'`,
+        `$s.Arguments = '--mindra-profile=${profileId}'`,
+        `$s.IconLocation = '${escapeForPwsh(appPath)}'`,
+        "$s.WorkingDirectory = Split-Path -Parent $s.TargetPath",
+        "$s.Save()",
+      ].join("; ");
 
-      await fs.writeFile(shortcutPath, script, "utf8");
+      try {
+        await execFileAsync("powershell.exe", [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-Command",
+          psScript,
+        ]);
+      } catch (e) {
+        console.warn("[profile] .lnk creation failed, fallback to .cmd", e);
+
+        const fallbackName = `MindraLight-${profileId}.cmd`;
+        shortcutPath = path.join(desktopDir, fallbackName);
+        const script = `@echo off\r\n"${appPath}" --mindra-profile=${profileId}\r\n`;
+
+        await fs.writeFile(shortcutPath, script, "utf8");
+      }
     } else {
       // Mac / Linux: 起動用スクリプト
       const isMac = process.platform === "darwin";

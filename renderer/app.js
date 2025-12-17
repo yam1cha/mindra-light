@@ -103,21 +103,24 @@ const STARTUP_PROFILE_ID =
   (CONFIG && typeof CONFIG.profileId === "string" && CONFIG.profileId) ||
   "profile-1";
 
-// タブの中で使う数値のプロファイル番号（1, 2, 3...）
-let DEFAULT_PROFILE_NO = 1;
+// 起動プロファイル番号（1, 2, 3...）
+let STARTUP_PROFILE_NO = 1;
 const mProfile = /^profile-(\d+)$/.exec(STARTUP_PROFILE_ID);
 if (mProfile) {
   const n = parseInt(mProfile[1], 10);
   if (Number.isFinite(n) && n > 0) {
-    DEFAULT_PROFILE_NO = n;
+    STARTUP_PROFILE_NO = n;
   }
 }
+
+// 新規タブのデフォルトプロファイル番号（表示用）
+const DEFAULT_TAB_PROFILE_NO = 1;
 
 // プロファイルごとにタブ状態を分けるキー
 const TABS_STATE_KEY =
   (CONFIG.SAVE_KEY_PREFIX || "") +
-  "mindraLightTabsState:profile-" +
-  DEFAULT_PROFILE_NO;
+  "mindraLightTabsState:" +
+  STARTUP_PROFILE_ID;
 
 // --- ブックマーク保存用キー（プロファイルごと） ---
 const BOOKMARKS_STORAGE_KEY =
@@ -1672,7 +1675,7 @@ function serializeTabsState() {
       return {
         uid: t.uid,
         url: t.url,
-        profileId: t.profileId || DEFAULT_PROFILE_NO,
+        profileId: t.profileId || DEFAULT_TAB_PROFILE_NO,
         // タブごとの履歴も保存
         historyEntries: Array.isArray(t.historyEntries)
           ? t.historyEntries
@@ -1768,7 +1771,7 @@ function loadTabsState() {
         uid,
         url,
         title,
-        profileId: t.profileId || DEFAULT_PROFILE_NO,
+        profileId: t.profileId || DEFAULT_TAB_PROFILE_NO,
         webviewId: null,
         historyEntries,
         historyIndex,
@@ -2904,11 +2907,16 @@ function createWebviewForTab(tab) {
 
   // プロファイルIDが入ってなければ起動プロファイル番号で補う
   if (!tab.profileId) {
-    tab.profileId = DEFAULT_PROFILE_NO;
+    tab.profileId = DEFAULT_TAB_PROFILE_NO;
   }
-  const profileId = tab.profileId || DEFAULT_PROFILE_NO;
+  const profileId = tab.profileId || DEFAULT_TAB_PROFILE_NO;
 
-  wv.setAttribute("partition", "persist:profile-" + profileId);
+  let partitionSuffix = `profile-${profileId}`;
+  if (STARTUP_PROFILE_ID !== `profile-${profileId}`) {
+    partitionSuffix = `${STARTUP_PROFILE_ID}-profile-${profileId}`;
+  }
+
+  wv.setAttribute("partition", `persist:${partitionSuffix}`);
  
   wv.setAttribute("allowpopups", "");
 /*
@@ -3041,7 +3049,7 @@ function createTab(url = "https://www.google.com", activate = true) {
     uid,
     url,
     title,
-    profileId: DEFAULT_PROFILE_NO,
+    profileId: DEFAULT_TAB_PROFILE_NO,
     webviewId: null,
     historyEntries: [],
     historyIndex: -1,
@@ -3113,7 +3121,7 @@ function restoreClosedTab() {
     uid,
     url,
     title,
-    profileId: last.profileId || DEFAULT_PROFILE_NO,
+    profileId: last.profileId || DEFAULT_TAB_PROFILE_NO,
     webviewId: null,
     historyEntries: [],
     historyIndex: -1,

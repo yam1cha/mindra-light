@@ -375,4 +375,22 @@ contextBridge.exposeInMainWorld("mindraDownloads", {
       };
     }
   },
+
+  /**
+   * 中断されたダウンロードを再開する。
+   * @param {string} downloadId 対象ダウンロードの ID。
+   * @returns {Promise<{ok: boolean, error?: string}>}
+   */
+  async resume(downloadId) {
+    try {
+      const res = await ipcRenderer.invoke("downloads:resume", downloadId);
+      return res || { ok: false, error: "unknown error" };
+    } catch (e) {
+      console.error("[preload] mindraDownloads.resume error:", e);
+      return {
+        ok: false,
+        error: e && e.message ? e.message : String(e),
+      };
+    }
+  },
 });

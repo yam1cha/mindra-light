@@ -1422,6 +1422,30 @@ ipcMain.handle("downloads:cancel", async (_event, downloadId) => {
   }
 });
 
+ipcMain.handle("downloads:resume", async (_event, downloadId) => {
+  if (!downloadId) {
+    return { ok: false, error: "downloadId is required" };
+  }
+
+  const item = activeDownloadItems.get(downloadId);
+  if (!item) {
+    return { ok: false, error: "対象のダウンロードが見つかりません" };
+  }
+
+  try {
+    if (typeof item.canResume === "function" && item.canResume()) {
+      item.resume();
+      return { ok: true };
+    }
+    return { ok: false, error: "再開できない状態です" };
+  } catch (e) {
+    logger.logError("downloads:resume exception", {
+      error: e && e.message ? e.message : String(e),
+    });
+    return { ok: false, error: e && e.message ? e.message : String(e) };
+  }
+});
+
 ipcMain.on("settings:update-general", (_event, flags) => {
   if (!flags || typeof flags !== "object") return;
   generalSettingsFlags = {

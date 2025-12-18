@@ -1524,29 +1524,55 @@ function renderDownloadItems() {
     const actions = document.createElement("div");
     actions.className = "download-item-actions";
 
-    const openBtn = document.createElement("button");
-    openBtn.textContent = "フォルダを開く";
-    openBtn.disabled = item.state !== "completed";
-    openBtn.onclick = async () => {
-      if (!window.mindraDownloads || typeof window.mindraDownloads.openFolder !== "function") return;
-      try {
-        const res = await window.mindraDownloads.openFolder(item && item.savePath);
-        if (!res || !res.ok) {
-          console.error("open downloads folder failed", res && res.error);
-        }
-      } catch (e) {
-        console.error("open downloads folder error", e);
-      }
-    };
-    actions.appendChild(openBtn);
+    const actionBtn = document.createElement("button");
+    const actionType = (() => {
+      if (item.state === "completed") return "open";
+      if (item.state === "interrupted") return "resume";
+      return "cancel";
+    })();
 
-    const dismissBtn = document.createElement("button");
-    dismissBtn.textContent = "中断";
-    dismissBtn.disabled = item.state !== "progressing";
-    dismissBtn.onclick = async () => {
-      if (!window.mindraDownloads || typeof window.mindraDownloads.cancel !== "function") {
+    actionBtn.textContent = (() => {
+      if (actionType === "open") return "フォルダを開く";
+      if (actionType === "resume") return "再開";
+      return "中断";
+    })();
+
+    actionBtn.disabled = (() => {
+      if (actionType === "open") return item.state !== "completed";
+      if (actionType === "resume") return item.state !== "interrupted";
+      return item.state !== "progressing";
+    })();
+
+    actionBtn.onclick = async () => {
+      if (!window.mindraDownloads) return;
+
+      if (actionType === "open") {
+        if (typeof window.mindraDownloads.openFolder !== "function") return;
+        try {
+          const res = await window.mindraDownloads.openFolder(item && item.savePath);
+          if (!res || !res.ok) {
+            console.error("open downloads folder failed", res && res.error);
+          }
+        } catch (e) {
+          console.error("open downloads folder error", e);
+        }
         return;
       }
+
+      if (actionType === "resume") {
+        if (typeof window.mindraDownloads.resume !== "function") return;
+        try {
+          const res = await window.mindraDownloads.resume(item.id);
+          if (!res || !res.ok) {
+            console.error("resume download failed", res && res.error);
+          }
+        } catch (e) {
+          console.error("resume download error", e);
+        }
+        return;
+      }
+
+      if (typeof window.mindraDownloads.cancel !== "function") return;
       try {
         const res = await window.mindraDownloads.cancel(item.id);
         if (!res || !res.ok) {
@@ -1556,7 +1582,7 @@ function renderDownloadItems() {
         console.error("cancel download error", e);
       }
     };
-    actions.appendChild(dismissBtn);
+    actions.appendChild(actionBtn);
 
     row.appendChild(actions);
 

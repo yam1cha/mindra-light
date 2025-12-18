@@ -1577,6 +1577,8 @@ function renderDownloadItems() {
         const res = await window.mindraDownloads.cancel(item.id);
         if (!res || !res.ok) {
           console.error("cancel download failed", res && res.error);
+        } else {
+          upsertDownloadItem({ ...item, state: "interrupted" });
         }
       } catch (e) {
         console.error("cancel download error", e);

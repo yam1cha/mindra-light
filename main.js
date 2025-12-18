@@ -1412,8 +1412,13 @@ ipcMain.handle("downloads:cancel", async (_event, downloadId) => {
   }
 
   try {
+    if (typeof item.pause === "function") {
+      item.pause();
+      return { ok: true };
+    }
+
     item.cancel();
-    return { ok: true };
+    return { ok: false, error: "中断に対応していません" };
   } catch (e) {
     logger.logError("downloads:cancel exception", {
       error: e && e.message ? e.message : String(e),

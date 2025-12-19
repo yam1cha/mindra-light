@@ -1147,7 +1147,7 @@ async function createWindow(profileIdArg) {
   });
 
   if (isDev) {
-    win.webContents.openDevTools({ mode: "detach" });// debug
+    //win.webContents.openDevTools({ mode: "detach" });// debug
   }
 
   win.webContents.setUserAgent(
@@ -1537,7 +1537,7 @@ ipcMain.handle("profile:create-shortcut", async () => {
 open -na "${appPath}" --args --mindra-profile=${profileId}
 `
 : `#!/bin/bash
-"/home/vboxuser/Downloads/mindra-light-ubuntu-latest(1)/mindra-light-0.8.4.AppImage" --no-sandbox --mindra-profile=${profileId} &
+"/home/vboxuser/Downloads/mindra-light-ubuntu-latest(1)/mindra-light-0.8.6.AppImage" --no-sandbox --mindra-profile=${profileId} &
 `;
 
       await fs.writeFile(shortcutPath, script, "utf8");

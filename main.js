@@ -1,5 +1,7 @@
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
-const { app, BrowserWindow, ipcMain, Menu, shell, session } = require("electron");
+const { app, BrowserWindow, ipcMain, Menu, shell, session, screen } = require(
+  "electron",
+);
 Menu.setApplicationMenu(null);
 const path = require("path");
 const fs = require("fs").promises;
@@ -647,8 +649,8 @@ function saveWindowState(win, profileId) {
   if (!win) return;
   const pid = profileId || "profile-1";
 
-  const bounds = win.getBounds();
   const isMaximized = win.isMaximized();
+  const bounds = isMaximized ? win.getNormalBounds() : win.getBounds();
 
   const nextState = {
     width: bounds.width,
@@ -673,6 +675,51 @@ function saveWindowState(win, profileId) {
     fsSync.writeFileSync(windowStatePath, JSON.stringify(all, null, 2), "utf8");
   } catch (e) {
     console.error("[window-state] save error:", e);
+  }
+}
+
+/**
+ * 保存済みのウインドウ位置が現在のディスプレイ構成でも有効になるよう補正する。
+ * 座標が欠落している場合はそのまま返す。
+ *
+ * @param {{x?: number, y?: number, width?: number, height?: number, isMaximized?: boolean}} state 保存された状態
+ * @returns {{x?: number, y?: number, width?: number, height?: number, isMaximized?: boolean}} 補正後の状態
+ */
+function normalizeWindowStateForDisplay(state) {
+  if (!state || typeof state !== "object") return state;
+  if (typeof state.x !== "number" || typeof state.y !== "number") return state;
+
+  try {
+    const displays = screen.getAllDisplays();
+    if (!displays || displays.length === 0) return state;
+
+    const width = typeof state.width === "number" ? state.width : 1280;
+    const height = typeof state.height === "number" ? state.height : 800;
+
+    const display = screen.getDisplayMatching({
+      x: state.x,
+      y: state.y,
+      width,
+      height,
+    });
+
+    const workArea = display
+      ? display.workArea
+      : screen.getPrimaryDisplay().workArea;
+
+    const maxX = workArea.x + Math.max(workArea.width - width, 0);
+    const maxY = workArea.y + Math.max(workArea.height - height, 0);
+
+    return {
+      ...state,
+      width,
+      height,
+      x: Math.min(Math.max(state.x, workArea.x), maxX),
+      y: Math.min(Math.max(state.y, workArea.y), maxY),
+    };
+  } catch (e) {
+    console.warn("[window-state] normalize error:", e);
+    return state;
   }
 }
 
@@ -1056,13 +1103,12 @@ async function createWindow(profileIdArg) {
     return existing;
   }
 
-  const winState = await loadWindowState(profileId);  // ここでプロファイル渡す
+  const winStateRaw = await loadWindowState(profileId); // ここでプロファイル渡す
+  const winState = normalizeWindowStateForDisplay(winStateRaw);
 
   let x, y;
-  if (!winState.isMaximized) {
-    if (typeof winState.x === "number") x = winState.x;
-    if (typeof winState.y === "number") y = winState.y;
-  }
+  if (typeof winState.x === "number") x = winState.x;
+  if (typeof winState.y === "number") y = winState.y;
 
   const isDev = !app.isPackaged;
   const configObj = loadConfigInMain(isDev);

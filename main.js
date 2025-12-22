@@ -79,7 +79,7 @@ function buildUniqueSavePath(fileName) {
 
 // 一般設定フラグ（renderer から IPC で更新）
 let generalSettingsFlags = {
-  enableAdblock: true, // 広告ブロック有効
+  enableAdblock: false, // 広告ブロック有効
   enablePopups: false, // ポップアップ無効
 };
 

@@ -94,7 +94,7 @@ const CONFIG = window.config || {};
 // main.js から渡される設定（なければデフォルト値）
 const generalSettingsFlags =
   (CONFIG && CONFIG.generalSettingsFlags) || {
-    enableAdblock: true,
+    enableAdblock: false,
     enablePopups: false,
   };
 

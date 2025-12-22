@@ -80,7 +80,17 @@ const WEB_ACTION_RULES = [
     chat: { input: "mindra-ok" },
   },
   {
-    // [US] GitHub Copilot Chat
+    // [US] HuggingFace Chat
+    match: /https?:\/\/huggingface\.co\/chat/,
+    chat: { input: "mindra-dummy" },
+  },
+  {
+    // [US] Groq Chat / Console
+    match: /https?:\/\/(groq\.com|console\.groq\.com)\//,
+    chat: { input: "mindra-dummy" },
+  },
+  {
+    // [US] GitHub Copilot Chat（専用ルート）
     match: /https?:\/\/github\.com\/copilot/,
     chat: { input: "mindra-ng" },
   },
@@ -89,6 +99,11 @@ const WEB_ACTION_RULES = [
   {
     // [Google] Gemini
     match: /https?:\/\/gemini\.google\.com\//,
+    chat: { input: "mindra-dummy" },
+  },
+  {
+    // [Google] AI Studio
+    match: /https?:\/\/aistudio\.google\.com\//,
     chat: { input: "mindra-dummy" },
   },
   {

@@ -27,5 +27,8 @@ filters/easyprivacy.txt
 # OSごとに生成される .node はリポジトリに含めない
 *.node
 
-# Electron builder cache
-build/
+# Electron builder cache/output（基本は無視）
+build/*
+
+# ただし NSIS のカスタムスクリプトはリポジトリに含める
+!build/installer.nsh

@@ -82,7 +82,7 @@ function buildUniqueSavePath(fileName) {
 // 一般設定フラグ（renderer から IPC で更新）
 let generalSettingsFlags = {
   enableAdblock: false, // 広告ブロック有効
-  enablePopups: false, // ポップアップ無効
+  enablePopups: true, // ポップアップ無効
 };
 
 // ===== ウインドウ位置・サイズ保存用 =====
@@ -1146,6 +1146,8 @@ async function createWindow(profileIdArg) {
    },
   });
 
+  profileWindows.set(profileId, win);
+
   const saveBounds = () => saveWindowState(win, profileId); // プロファイル渡す
   win.on("resize", saveBounds);
   win.on("move", saveBounds);
@@ -1360,6 +1362,53 @@ async function createWindow(profileIdArg) {
     }
   });
 }
+
+function extractHttpUrlFromArgv(argv) {
+  const list = Array.isArray(argv) ? argv : [];
+  for (const a of list) {
+    if (typeof a === "string" && /^https?:\/\//i.test(a)) return a;
+  }
+  return null;
+}
+
+function openUrlInExistingWindow(win, url) {
+  if (!win || win.isDestroyed()) return false;
+  if (!url || typeof url !== "string") return false;
+  if (!/^https?:\/\//i.test(url)) return false;
+
+  try {
+    if (win.isMinimized()) win.restore();
+    win.show();
+    win.focus();
+  } catch {
+    // ignore
+  }
+
+  const sendOpen = () => {
+    try {
+      win.webContents.send("mindra-shortcut", {
+        type: "new-tab-with-url",
+        url,
+      });
+    } catch (e) {
+      console.error("[default-browser] failed to send new-tab-with-url:", e);
+    }
+  };
+
+  // renderer がまだロード中なら、読み込み完了後に一回だけ送る
+  try {
+    if (win.webContents && win.webContents.isLoading && win.webContents.isLoading()) {
+      win.webContents.once("did-finish-load", () => sendOpen());
+      return true;
+    }
+  } catch {
+    // ignore
+  }
+
+  sendOpen();
+  return true;
+}
+
 // --------
 // デフォルトブラウザ設定画面を開く（Windows / macOS / Linux）
 ipcMain.handle("open-default-browser-settings", async () => {
@@ -1789,21 +1838,32 @@ if (!gotLock) {
   app.quit();
 } else {
   // すでに起動している状態で、別プロファイルのショートカットを起動したとき
-  app.on("second-instance", (_event, commandLine, _workingDirectory) => {
+  app.on("second-instance", async (_event, commandLine, _workingDirectory) => {
     if (!app.isReady()) return;
 
     const profileId = extractProfileIdFromArgv(commandLine);
-    createWindow(profileId);
+    const url = extractHttpUrlFromArgv(commandLine);
+
+    const win = await createWindow(profileId);
+    if (url) {
+      openUrlInExistingWindow(win, url);
+    }
   });
+
 
   app.whenReady().then(async () => {
     initHistory(app);
 
     setupDownloadEvents();
 
-    const initialProfileId = extractProfileIdFromArgv(process.argv);
-    await createWindow(initialProfileId);
+  const initialProfileId = extractProfileIdFromArgv(process.argv);
+  const win = await createWindow(initialProfileId);
 
+  const url = extractHttpUrlFromArgv(process.argv);
+  if (url) {
+    openUrlInExistingWindow(win, url);
+  }
+    
     app.on("activate", async () => {
       if (BrowserWindow.getAllWindows().length === 0) {
         const p = extractProfileIdFromArgv(process.argv);
@@ -1826,4 +1886,13 @@ if (!gotLock) {
       app.quit();
     }
   });
+
+  app.on("open-url", async (event, url) => {
+    event.preventDefault();
+
+    const win = await createWindow(extractProfileIdFromArgv(process.argv));
+    openUrlInExistingWindow(win, url);
+  });
+  
 }
+

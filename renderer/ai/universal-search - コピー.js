@@ -103,17 +103,22 @@ const WEB_ACTION_RULES = [
   {
     // [EU] Mistral / Chat
     match: /https?:\/\/(mistral\.ai|chat\.mistral\.ai)\//,
-    chat: { input: "mindra-ok" },
+    chat: { input: "mindra-dummy" },
+  },
+  {
+    // [EU] Aleph Alpha
+    match: /https?:\/\/(www\.)?aleph-alpha\.com\//,
+    chat: { input: "mindra-dummy" },
   },
   {
     // [EU] DeepL Chat
     match: /https?:\/\/www\.deepl\.com\/chat/,
-    chat: { input: "mindra-ok" },
+    chat: { input: "mindra-dummy" },
   },
   {
     // [EU] Pi (heyPi)
     match: /https?:\/\/heypi\.com\//,
-    chat: { input: "mindra-ok" },
+    chat: { input: "mindra-dummy" },
   },
 
   // ===== China 系 =====

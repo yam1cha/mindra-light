@@ -25,8 +25,8 @@
     general: {
       // 'cool' | 'cute' | 'simple'
       theme: 'cute',
-      enableAdblock: true,   // 広告ブロック ON/OFF
-      enablePopups: false,   // ポップアップウィンドウを許可するか
+      enableAdblock: false,   // 広告ブロック ON/OFF
+      enablePopups: true,   // ポップアップウィンドウを許可するか
        // 以下は内部用。UIではいじらないけど、互換性のため残しておく
       restoreLayoutOnStartup: true,
       pinSidebar: true,

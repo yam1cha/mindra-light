@@ -95,7 +95,7 @@ const CONFIG = window.config || {};
 const generalSettingsFlags =
   (CONFIG && CONFIG.generalSettingsFlags) || {
     enableAdblock: false,
-    enablePopups: false,
+    enablePopups: true,
   };
 
 // main.js から渡された profileId（例: "profile-2"）

@@ -3213,17 +3213,6 @@ function setActiveTab(id) {
 
   currentTabId = id;
 
-  // SplitView中: アクティブにしたタブが分割レイアウトに入っていないと表示が切り替わらない
-  // → 必ずレイアウトに入れて、そのグループの activeTabId を更新する
-  if (splitCanvasMode) {
-    if (typeof ensureLayoutRootForTab === "function") {
-      ensureLayoutRootForTab(id);
-    }
-    if (layoutRoot && typeof setActiveGroupForTab === "function") {
-      setActiveGroupForTab(id);
-    }
-  }
-
   applyCurrentLayout();
   syncUrlAndBookmarkUI();
   saveTabsState();
@@ -3252,19 +3241,6 @@ function createTab(url = "https://www.google.com", activate = true) {
   addHistoryEntry(tab, url);
 
   tabs.unshift(tab);
-
-  // SplitView中に新タブを作ったら、表示レイアウト側にも必ず入れる
-  if (splitCanvasMode) {
-    const baseId = currentTabId;
-    if (typeof addTabToGroupOfTab === "function" && baseId) {
-      const ok = addTabToGroupOfTab(tab.id, baseId);
-      if (!ok && typeof ensureLayoutRootForTab === "function") {
-        ensureLayoutRootForTab(tab.id);
-      }
-    } else if (typeof ensureLayoutRootForTab === "function") {
-      ensureLayoutRootForTab(tab.id);
-    }
-  }
 
   if (activate) {
     setActiveTab(id);
@@ -4002,7 +3978,14 @@ if (window.mindraShortcuts && window.mindraShortcuts.onShortcut) {
         createTab("https://www.google.com", true);
         break;
       case "new-tab-with-url":
-        if (url) createTab(url, true);
+        if (url) {
+          // SplitView中なら抜けてレイアウト保持（SplitView自体は“記憶”しておく）
+          exitSplitViewPreserveLayout();
+          updateSplitViewButtonStyle();
+
+          // 通常タブとして開いて、そのタブに表示を切り替える
+          createTab(url, true);
+        }
         break;
       case "close-tab":
         if (currentTabId != null) closeTab(currentTabId);

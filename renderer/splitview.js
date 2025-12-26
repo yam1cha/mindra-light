@@ -1439,27 +1439,3 @@ function handleTabClosedForSplitView(closedTabId) {
   splitLastTabId = null;
   saveTabsState();
 }
-
-// baseTabId と同じグループに newTabId を追加して、そのグループを newTabId に切り替える
-function addTabToGroupOfTab(newTabId, baseTabId) {
-  if (!layoutRoot) return false;
-
-  const findGroup = (node) => {
-    if (!node) return null;
-    if (node.type === "group") {
-      if (Array.isArray(node.tabs) && node.tabs.includes(baseTabId)) return node;
-      return null;
-    }
-    if (node.type === "split") {
-      return findGroup(node.a) || findGroup(node.b);
-    }
-    return null;
-  };
-
-  const g = findGroup(layoutRoot);
-  if (!g || !Array.isArray(g.tabs)) return false;
-
-  if (!g.tabs.includes(newTabId)) g.tabs.push(newTabId);
-  g.activeTabId = newTabId;
-  return true;
-}
